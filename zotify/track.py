@@ -144,6 +144,9 @@ def get_song_duration(song_id: str) -> float:
 
 def handle_lyrics(track_id: str, song_name: str, filedir: PurePath) -> list[str] | None:
     lyrics = None
+    if not Zotify.CONFIG.get_download_lyrics() and not Zotify.CONFIG.get_always_check_lyrics():
+        return lyrics
+    
     try:
         lyricdir = Zotify.CONFIG.get_lyrics_location()
         if lyricdir is None:
@@ -238,19 +241,20 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
             c = len([file for file in Path(filedir).iterdir() if file.match(filename.stem + "*")])
             filename = PurePath(filedir).joinpath(f'{filename.stem}_{c}{filename.suffix}')
         
+        liked_m3u8 = child_request_mode == "liked" and Zotify.CONFIG.get_liked_songs_archive_m3u8()
         if Zotify.CONFIG.get_export_m3u8() and track_id == child_request_id:
-            if child_request_mode == "liked" and Zotify.CONFIG.get_liked_songs_archive_m3u8():
+            if liked_m3u8:
                 m3u_path = filedir / "Liked Songs.m3u8"
                 songs_m3u = fetch_m3u8_songs(m3u_path)
-            song_label = add_to_m3u8(child_request_mode, get_song_duration(track_id), song_name, filename)
-            if child_request_mode == "liked" and Zotify.CONFIG.get_liked_songs_archive_m3u8():
+            song_label = add_to_m3u8(liked_m3u8, get_song_duration(track_id), song_name, filename)
+            if liked_m3u8:
                 if songs_m3u is not None and song_label in songs_m3u[0]:
                     Zotify.CONFIG.Values[EXPORT_M3U8] = False
                     Path(filedir / (Zotify.datetime_launch + "_zotify.m3u8")).replace(m3u_path)
                     with open(m3u_path, 'a', encoding='utf-8') as file:
                         file.writelines(songs_m3u[3:])
         
-        if Zotify.CONFIG.get_download_lyrics() and Zotify.CONFIG.get_always_check_lyrics():
+        if Zotify.CONFIG.get_always_check_lyrics():
             lyrics = handle_lyrics(track_id, song_name, filedir)
     
     except Exception as e:
@@ -321,8 +325,7 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                     
                     genres = get_song_genres(raw_artists, name)
                     
-                    if Zotify.CONFIG.get_download_lyrics() and not Zotify.CONFIG.get_always_check_lyrics():
-                        lyrics = handle_lyrics(track_id, song_name, filedir)
+                    lyrics = handle_lyrics(track_id, song_name, filedir)
                     
                     # no metadata is written to track prior to conversion
                     convert_audio_format(filename_temp)
@@ -356,8 +359,6 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                     
                     wait_between_downloads()
             
-            
-            
         except Exception as e:
             Printer.print(PrintChannel.ERRORS, f'###   SKIPPING: {song_name} (GENERAL DOWNLOAD ERROR) - Track_ID: {str(track_id)}   ###')
             Printer.print(PrintChannel.ERRORS, "Extra_Keys {" + ", ".join(f'"{it[0]}": "{it[1]}"' for it in extra_keys.items()) + "}")
@@ -366,7 +367,7 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
             Printer.print(PrintChannel.ERRORS, "\n\n")
             if Path(filename_temp).exists():
                 Path(filename_temp).unlink()
-
+    
     prepare_download_loader.stop()
     Printer.print(PrintChannel.ERRORS, "\n")
 
