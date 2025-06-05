@@ -59,7 +59,7 @@ def main():
     
     for configkey in CONFIG_VALUES:
         parser.add_argument(*CONFIG_VALUES[configkey]['arg'],
-                            type=CONFIG_VALUES[configkey]['type'],
+                            type=str, #type conversion occurs in config.parse_arg_value()
                             dest=configkey.lower(),
                             default=None,
                             # help='Specify the value of the ['+configkey+'] config value'

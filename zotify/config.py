@@ -161,15 +161,15 @@ class Config:
                     cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key])
         
         # Add default values for missing keys
-        
         for key in CONFIG_VALUES:
             if key not in cls.Values:
+                # print(key)
                 cls.Values[key] = cls.parse_arg_value(key, CONFIG_VALUES[key]['default'])
         
         # Override config from commandline arguments
-        
         for key in CONFIG_VALUES:
             if key.lower() in vars(args) and vars(args)[key.lower()] is not None:
+                # print(f"{key} {cls.Values[key]} -> {cls.parse_arg_value(key, vars(args)[key.lower()])}")
                 cls.Values[key] = cls.parse_arg_value(key, vars(args)[key.lower()])
         
         if args.no_splash:
