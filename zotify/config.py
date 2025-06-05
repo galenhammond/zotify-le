@@ -457,7 +457,6 @@ class Config:
                 m3u8_path = cls.get_root_path() / PurePath(m3u8_path).relative_to(".")
             m3u8_path = PurePath(Path(m3u8_path).expanduser())
         
-        Path(m3u8_path).mkdir(parents=True, exist_ok=True)
         return m3u8_path
     
     @classmethod
