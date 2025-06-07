@@ -59,6 +59,7 @@ ALWAYS_CHECK_LYRICS = 'ALWAYS_CHECK_LYRICS'
 M3U8_LOCATION = 'M3U8_LOCATION'
 M3U8_REL_PATHS = 'M3U8_REL_PATHS'
 DOWNLOAD_PARENT_ALBUM = 'DOWNLOAD_PARENT_ALBUM'
+REDIRECT_URI = "REDIRECT_URI"
 
 
 CONFIG_VALUES = {
@@ -113,6 +114,7 @@ CONFIG_VALUES = {
     CHUNK_SIZE:                 { 'default': '20000',                   'type': int,    'arg': ('--chunk-size'                           ,) },
     DOWNLOAD_REAL_TIME:         { 'default': 'False',                   'type': bool,   'arg': ('-rt', '--download-real-time'            ,) },
     LANGUAGE:                   { 'default': 'en',                      'type': str,    'arg': ('--language'                             ,) },
+    REDIRECT_URI:               { 'default': '127.0.0.1:4381',          'type': str,    'arg': ('--redirect-uri'                         ,) },
     PRINT_SPLASH:               { 'default': 'False',                   'type': bool,   'arg': ('--print-splash'                         ,) },
     PRINT_SKIPS:                { 'default': 'True',                    'type': bool,   'arg': ('--print-skips'                          ,) },
     PRINT_DOWNLOAD_PROGRESS:    { 'default': 'True',                    'type': bool,   'arg': ('--print-download-progress'              ,) },
@@ -467,3 +469,6 @@ class Config:
     def get_download_parent_album(cls) -> bool:
         return cls.get(DOWNLOAD_PARENT_ALBUM)
     
+    @classmethod
+    def get_redirect_uri(cls) -> str:
+        return cls.get(REDIRECT_URI)

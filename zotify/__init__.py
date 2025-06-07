@@ -29,7 +29,7 @@ from requests import HTTPError, get, post
 
 API_URL = "https://api.sp" + "otify.com/v1/"
 AUTH_URL = "https://accounts.sp" + "otify.com/"
-REDIRECT_URI = "http://127.0.0.1:4381/login"
+REDIRECT_URI = "127.0.0.1:4381"
 CLIENT_ID = "65b70807" + "3fc0480e" + "a92a0772" + "33ca87bd"
 SCOPES = [
     "app-remote-control",
@@ -259,8 +259,9 @@ class OAuth:
     __token: TokenProvider.StoredToken
     username: str
 
-    def __init__(self, username: str):
+    def __init__(self, username: str, redirect_uri: str = REDIRECT_URI) -> None:
         self.username = username
+        self.redirect_uri = f"http://{redirect_uri}/login"
 
     def auth_interactive(self) -> str:
         """
@@ -275,7 +276,7 @@ class OAuth:
         params = {
             "client_id": CLIENT_ID,
             "response_type": "code",
-            "redirect_uri": REDIRECT_URI,
+            "redirect_uri": self.redirect_uri,
             "scope": ",".join(SCOPES),
             "code_challenge_method": "S256",
             "code_challenge": code_challenge,
@@ -315,7 +316,7 @@ class OAuth:
             body = {
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": REDIRECT_URI,
+                "redirect_uri": self.redirect_uri,
                 "client_id": CLIENT_ID,
                 "code_verifier": self.__code_verifier,
             }

@@ -26,7 +26,7 @@ class Zotify:
     
         # Create session
         if args.username not in {None, ""} and args.token not in {None, ""}:
-            oauth = OAuth(args.username)
+            oauth = OAuth(args.username, cls.CONFIG.get_redirect_uri())
             oauth.set_token(args.token, OAuth.RequestType.REFRESH)
             cls.SESSION = Session.from_oauth(
                 oauth, cls.CONFIG.get_credentials_location(), cls.CONFIG.get_language()
@@ -40,7 +40,7 @@ class Zotify:
             username = args.username
             while username == "":
                 username = input("Username: ")
-            oauth = OAuth(username)
+            oauth = OAuth(username, cls.CONFIG.get_redirect_uri())
             auth_url = oauth.auth_interactive()
             print(f"\nClick on the following link to login:\n{auth_url}")
             cls.SESSION = Session.from_oauth(

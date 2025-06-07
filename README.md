@@ -106,6 +106,7 @@ Set arguments in the commandline like this: `-ie False` or `--codec mp3`. Wrap c
 | `CHUNK_SIZE`                 | `--chunk-size`                        | 20000     | Chunk size for downloading                                                                   |
 | `DOWNLOAD_REAL_TIME`         | `-rt`, `--download-real-time`         | False     | Downloads songs as fast as they would be played, should prevent account bans                 |
 | `LANGUAGE`                   | `--language`                          | en        | Language of metadata                                                                         |
+| `REDIRECT_URI`               | `--redirect-uri`                      | 127.0.0.1:4381     | Local callback point for OAuth login requests                                       |
 | `PRINT_SPLASH`               | `--print-splash`                      | False     | Show the Zotify logo at startup                                                              |
 | `PRINT_SKIPS`                | `--print-skips`                       | True      | Show messages if a song is being skipped                                                     |
 | `PRINT_DOWNLOAD_PROGRESS`    | `--print-download-progress`           | True      | Show song download progress bar                                                              |
