@@ -43,12 +43,12 @@ See [INSTALLATION](INSTALLATION.md) for a more detailed and opinionated installa
 Download track(s), album(s), playlist(s), podcast episode(s), or artist(s) specified by the URL(s) passed as a command line argument(s).
 If an artist's URL is given, all albums by the specified artist will be downloaded. Can take multiple URLs as multiple arguments.
 
-| Command Line Flag             | Function                                                                               |
-|-------------------------------|----------------------------------------------------------------------------------------|
-| `-h`, `--help`                | See this message                                                                       |
-| `-c`, `--config-location`     | Specify a directory containing a Zotify `config.json` file to load settings            |
-| `-u`, `--username`            | Account username                                                                       |
-| `--token`                     | Authentication token                                                                   |
+| Command Line Flag             | Function                                                                                                                |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `-h`, `--help`                | See this message                                                                                                        |
+| `-c`, `--config-location`     | Specify a directory containing a Zotify `config.json` file to load settings (Also accepts a filepath to a `.json` file) |
+| `-u`, `--username`            | Account username                                                                                                        |
+| `--token`                     | Authentication token                                                                                                    |
 
 | Command Line Flag (exclusive) | Function                                                                               |
 |-------------------------------|----------------------------------------------------------------------------------------|

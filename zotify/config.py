@@ -146,7 +146,9 @@ class Config:
         else:
             config_fp = system_paths[sys.platform] / 'config.json'
         if args.config_location:
-            config_fp = Path(args.config_location) / 'config.json'
+            config_fp = Path(args.config_location) 
+            if config_fp.is_dir():
+                config_fp = config_fp / 'config.json'
         
         true_config_file_path = Path(config_fp).expanduser()
         
