@@ -388,7 +388,6 @@ class Config:
                 lyrics_path = cls.get_root_path() / PurePath(lyrics_path).relative_to(".")
             lyrics_path = PurePath(Path(lyrics_path).expanduser())
         
-        Path(lyrics_path).mkdir(parents=True, exist_ok=True)
         return lyrics_path
     
     @classmethod

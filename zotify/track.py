@@ -152,6 +152,8 @@ def handle_lyrics(track_id: str, song_name: str, filedir: PurePath) -> list[str]
         if lyricdir is None:
             lyricdir = filedir
         
+        Path(lyricdir).mkdir(parents=True, exist_ok=True)
+        
         lyrics = get_song_lyrics(track_id)
         with open(lyricdir / f"{song_name}.lrc", 'w', encoding='utf-8') as file:
             file.writelines(lyrics)
@@ -231,10 +233,10 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
         
         check_name = Path(filename).is_file() and Path(filename).stat().st_size
         check_local = scraped_song_id in get_directory_song_ids(filedir)
-        check_all_time = scraped_song_id in get_previously_downloaded()
         if Zotify.CONFIG.get_disable_directory_archives():
             check_local = not Zotify.CONFIG.get_skip_existing() or not Zotify.CONFIG.get_skip_previously_downloaded()
             # avoids overwrite case only when both "safety switches" are on
+        check_all_time = scraped_song_id in get_previously_downloaded()
         
         # same filename, not same song_id, rename the newcomer
         if not check_local and check_name:
