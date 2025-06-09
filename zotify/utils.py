@@ -139,16 +139,26 @@ def get_downloaded_song_duration(filename: str) -> float:
     return duration
 
 
-def split_input(selection) -> list[str]:
-    """ Returns a list of inputted strings """
-    inputs = []
-    if '-' in selection:
-        for number in range(int(selection.split('-')[0]), int(selection.split('-')[1]) + 1):
-            inputs.append(number)
+def split_sanitize_input(raw_input: str) -> list[int]:
+    """ Returns a list of IDs from a string input, including ranges and single IDs """
+    
+    # removes all non-numeric characters except for commas and hyphens
+    sanitized = re.sub(r"[^\d\-,]*", "", raw_input.strip())
+    
+    if "," in sanitized:
+        IDranges = sanitized.split(',')
     else:
-        selections = selection.split(',')
-        for i in selections:
-            inputs.append(i.strip())
+        IDranges = [sanitized,]
+    
+    inputs = []
+    for ids in IDranges:
+        if "-" in ids:
+            start, end = ids.split('-')
+            inputs.extend(list(range(int(start), int(end) + 1)))
+        else:
+            inputs.append(int(ids))
+    inputs.sort()
+    
     return inputs
 
 

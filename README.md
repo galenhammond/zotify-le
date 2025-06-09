@@ -52,11 +52,11 @@ If an artist's URL is given, all albums by the specified artist will be download
 
 | Command Line Flag (exclusive) | Function                                                                               |
 |-------------------------------|----------------------------------------------------------------------------------------|
-| `-d`, `--download`            | Download all tracks/albums/episodes/playlists URLs within the file passed as argument  |
+| `-s`, `--search`              | Search tracks/albums/artists/playlists based on argument (interactive)                 |
 | `-p`, `--playlist`            | Download playlist(s) saved by your account (interactive)                               |
 | `-l`, `--liked`               | Download all Liked Songs on your account                                               |
-| `-f`, `--followed`            | Download all songs by all followed artists                                             |
-| `-s`, `--search`              | Search tracks/albums/artists/playlists based on argument (interactive)                 |
+| `-a`, `--artists`             | Download all songs by all followed artists                                             |
+| `-f`, `--file`                | Download all tracks/albums/episodes/playlists URLs within the file passed as argument  |
 
 ## Advanced Options
 

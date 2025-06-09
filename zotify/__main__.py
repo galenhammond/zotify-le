@@ -41,7 +41,7 @@ def main():
                        dest='liked_songs',
                        action='store_true',
                        help='Download all Liked Songs on your account')
-    group.add_argument('-f', '--followed',
+    group.add_argument('-a', '--artists',
                        dest='followed_artists',
                        action='store_true',
                        help='Download all songs by all followed artists')
@@ -53,8 +53,9 @@ def main():
                        nargs='?',
                        const=' ',
                        help='Search tracks/albums/artists/playlists based on argument (interactive)')
-    group.add_argument('-d', '--download',
+    group.add_argument('-f', '--file',
                        type=str,
+                       dest='file_of_urls',
                        help='Download all tracks/albums/episodes/playlists URLs within the file passed as argument')
     
     for configkey in CONFIG_VALUES:

@@ -2,7 +2,7 @@ from zotify.const import ITEMS, ID, TRACK, NAME, TYPE
 from zotify.podcast import download_episode
 from zotify.termoutput import Printer
 from zotify.track import download_track
-from zotify.utils import split_input, strptime_utc
+from zotify.utils import split_sanitize_input, strptime_utc
 from zotify.zotify import Zotify
 
 MY_PLAYLISTS_URL = 'https://api.spot'+'ify.com/v1/me/playlists'
@@ -96,7 +96,7 @@ def download_from_user_playlist():
     print('> OR PARTICULAR OPTIONS BY ADDING A COMMA BETWEEN ID\'s\n')
     while len(selection) == 0:
         selection = str(input('ID(s): '))
-    playlist_choices = split_input(selection)
+    playlist_choices = split_sanitize_input(selection)
     
     pos = 5
     p_bar = Printer.progress(playlist_choices, unit='playlists', total=len(playlist_choices), unit_scale=True, 
