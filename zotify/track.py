@@ -286,6 +286,11 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                         track_id = scraped_song_id
                     track = TrackId.from_base62(track_id)
                     stream = Zotify.get_content_stream(track, Zotify.DOWNLOAD_QUALITY)
+                    if stream is None:
+                        prepare_download_loader.stop()
+                        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO GET CONTENT STREAM   ###')
+                        Printer.print(PrintChannel.ERRORS, f'###   Track_ID: {track_id}   ###')
+                        return
                     create_download_directory(filedir)
                     total_size = stream.input_stream.size
                     

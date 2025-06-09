@@ -11,6 +11,7 @@ from zotify.const import TYPE, \
     PLAYLIST_READ_PRIVATE, USER_LIBRARY_READ, USER_FOLLOW_READ
 from zotify.config import Config
 
+
 class Zotify:    
     SESSION: Session = None
     DOWNLOAD_QUALITY = None
@@ -51,7 +52,17 @@ class Zotify:
     
     @classmethod
     def get_content_stream(cls, content_id, quality):
-        return cls.SESSION.content_feeder().load(content_id, VorbisOnlyAudioQuality(quality), False, None)
+        try:
+            return cls.SESSION.content_feeder().load(content_id, VorbisOnlyAudioQuality(quality), False, None)
+        except RuntimeError as e:
+            from zotify.termoutput import Printer, PrintChannel
+            if 'Failed fetching audio key!' in e.args[0]:
+                gid, fileid = e.args[0].split('! ')[1].split(', ')
+                Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FETCH AUDIO KEY   ###')
+                Printer.print(PrintChannel.ERRORS, '###   MAY BE CAUSED BY RATE LIMITS - CONSIDER INCREASING `BULK_WAIT_TIME`   ###')
+                Printer.print(PrintChannel.ERRORS, f'###   GID: {gid[5:]} - File_ID: {fileid[8:]}   ###\n\n')
+            else:
+                raise e
     
     @classmethod
     def __get_auth_token(cls):
