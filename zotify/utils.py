@@ -4,22 +4,50 @@ import os
 import platform
 import re
 import subprocess
-import time
+from time import sleep
 from pathlib import Path, PurePath
 
 import music_tag
 import requests
 
-from zotify.const import ARTIST, GENRE, TRACKTITLE, ALBUM, YEAR, DISCNUMBER, TRACKNUMBER, ARTWORK, \
-    WINDOWS_SYSTEM, ALBUMARTIST, TOTALTRACKS, TOTALDISCS, EXT_MAP, LYRICS, COMPILATION
+from zotify.const import ALBUMARTIST, ARTIST, TRACKTITLE, ALBUM, YEAR, DISCNUMBER, TRACKNUMBER, ARTWORK, \
+    WINDOWS_SYSTEM, TOTALTRACKS, TOTALDISCS, EXT_MAP, LYRICS, COMPILATION, GENRE
 from zotify.zotify import Zotify
 from zotify.termoutput import PrintChannel, Printer
+
+
+def get_archived_song_ids() -> list[str]:
+    """ Returns list of all time downloaded songs """
+    
+    ids = []
+    archive_path = Zotify.CONFIG.get_song_archive_location()
+    
+    if Path(archive_path).exists():
+        with open(archive_path, 'r', encoding='utf-8') as f:
+            ids = [line.strip().split('\t')[0] for line in f.readlines()]
+    
+    return ids
+
+
+def add_to_song_archive(song_id: str, filename: str, author_name: str, song_name: str) -> None:
+    """ Adds song id to all time installed songs archive """
+    
+    if Zotify.CONFIG.get_disable_song_archive():
+        return
+    
+    archive_path = Zotify.CONFIG.get_song_archive_location()
+    if Path(archive_path).exists():
+        with open(archive_path, 'a', encoding='utf-8') as file:
+            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+    else:
+        with open(archive_path, 'w', encoding='utf-8') as file:
+            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
 
 
 def create_download_directory(download_path: str | PurePath) -> None:
     """ Create directory and add a hidden file with song ids """
     Path(download_path).mkdir(parents=True, exist_ok=True)
-
+    
     # add hidden file with song ids
     hidden_file_path = PurePath(download_path).joinpath('.song_ids')
     if Zotify.CONFIG.get_disable_directory_archives():
@@ -29,30 +57,94 @@ def create_download_directory(download_path: str | PurePath) -> None:
             pass
 
 
-def get_previously_downloaded() -> list[str]:
-    """ Returns list of all time downloaded songs """
-
-    ids = []
-    archive_path = Zotify.CONFIG.get_song_archive_location()
-
-    if Path(archive_path).exists():
-        with open(archive_path, 'r', encoding='utf-8') as f:
-            ids = [line.strip().split('\t')[0] for line in f.readlines()]
-
-    return ids
-
-
-def add_to_archive(song_id: str, filename: str, author_name: str, song_name: str) -> None:
-    """ Adds song id to all time installed songs archive """
+def get_directory_song_ids(download_path: str) -> list[str]:
+    """ Gets song ids of songs in directory """
     
-    archive_path = Zotify.CONFIG.get_song_archive_location()
+    song_ids = []
     
-    if Path(archive_path).exists():
-        with open(archive_path, 'a', encoding='utf-8') as file:
-            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+    hidden_file_path = PurePath(download_path).joinpath('.song_ids')
+    
+    if Path(hidden_file_path).is_file() and not Zotify.CONFIG.get_disable_directory_archives():
+        with open(hidden_file_path, 'r', encoding='utf-8') as file:
+            song_ids.extend([line.strip().split('\t')[0] for line in file.readlines()])
+    
+    return song_ids
+
+
+def add_to_directory_song_archive(download_path: str, song_id: str, filename: str, author_name: str, song_name: str) -> None:
+    """ Appends song_id to .song_ids file in directory """
+    
+    if Zotify.CONFIG.get_disable_directory_archives():
+        return
+    
+    hidden_file_path = PurePath(download_path).joinpath('.song_ids')
+    # not checking if file exists because we need an exception
+    # to be raised if something is wrong
+    with open(hidden_file_path, 'a', encoding='utf-8') as file:
+        file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+
+
+def get_downloaded_song_duration(filename: str) -> float:
+    """ Returns the downloaded file's duration in seconds """
+    
+    command = ['ffprobe', '-show_entries', 'format=duration', '-i', f'{filename}']
+    output = subprocess.run(command, capture_output=True)
+    
+    duration = re.search(r'[\D]=([\d\.]*)', str(output.stdout)).groups()[0]
+    duration = float(duration)
+    
+    return duration
+
+
+def split_sanitize_input(raw_input: str) -> list[int]:
+    """ Returns a list of IDs from a string input, including ranges and single IDs """
+    
+    # removes all non-numeric characters except for commas and hyphens
+    sanitized = re.sub(r"[^\d\-,]*", "", raw_input.strip())
+    
+    if "," in sanitized:
+        IDranges = sanitized.split(',')
     else:
-        with open(archive_path, 'w', encoding='utf-8') as file:
-            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+        IDranges = [sanitized,]
+    
+    inputs = []
+    for ids in IDranges:
+        if "-" in ids:
+            start, end = ids.split('-')
+            inputs.extend(list(range(int(start), int(end) + 1)))
+        else:
+            inputs.append(int(ids))
+    inputs.sort()
+    
+    return inputs
+
+
+def splash() -> str:
+    """ Displays splash screen """
+    return "" + \
+    "    ███████╗ ██████╗ ████████╗██╗███████╗██╗   ██╗"+"\n"+\
+    "    ╚══███╔╝██╔═══██╗╚══██╔══╝██║██╔════╝╚██╗ ██╔╝"+"\n"+\
+    "      ███╔╝ ██║   ██║   ██║   ██║█████╗   ╚████╔╝ "+"\n"+\
+    "     ███╔╝  ██║   ██║   ██║   ██║██╔══╝    ╚██╔╝  "+"\n"+\
+    "    ███████╗╚██████╔╝   ██║   ██║██║        ██║   "+"\n"+\
+    "    ╚══════╝ ╚═════╝    ╚═╝   ╚═╝╚═╝        ╚═╝   "+"\n\n"
+
+
+def search_select() -> str:
+    """ Displays search select screen """
+    return (
+    "> SELECT A DOWNLOAD OPTION BY ID\n" +
+    "> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's\n" +
+    "> OR PARTICULAR OPTIONS BY ADDING A COMMA BETWEEN ID's\n"
+    )
+
+
+def clear() -> None:
+    """ Clear the console window """
+    if platform.system() == WINDOWS_SYSTEM:
+        os.system('cls')
+    else:
+        os.system('clear')
 
 
 def add_to_m3u8(liked_m3u8: bool, song_duration: float, song_name: str, song_path: PurePath) -> str | None:
@@ -99,87 +191,6 @@ def fetch_m3u8_songs(m3u_path: PurePath) -> list[str] | None:
         # for i in range(len(linesraw)//3):
         #     songsgrouped.append(linesraw[3*i:3*i+3])
     return linesraw
-
-
-def get_directory_song_ids(download_path: str) -> list[str]:
-    """ Gets song ids of songs in directory """
-    
-    song_ids = []
-    
-    hidden_file_path = PurePath(download_path).joinpath('.song_ids')
-    
-    if Path(hidden_file_path).is_file() and not Zotify.CONFIG.get_disable_directory_archives():
-        with open(hidden_file_path, 'r', encoding='utf-8') as file:
-            song_ids.extend([line.strip().split('\t')[0] for line in file.readlines()])
-    
-    return song_ids
-
-
-def add_to_directory_song_ids(download_path: str, song_id: str, filename: str, author_name: str, song_name: str) -> None:
-    """ Appends song_id to .song_ids file in directory """
-    
-    hidden_file_path = PurePath(download_path).joinpath('.song_ids')
-    if Zotify.CONFIG.get_disable_directory_archives():
-        return
-    # not checking if file exists because we need an exception
-    # to be raised if something is wrong
-    with open(hidden_file_path, 'a', encoding='utf-8') as file:
-        file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
-
-
-def get_downloaded_song_duration(filename: str) -> float:
-    """ Returns the downloaded file's duration in seconds """
-    
-    command = ['ffprobe', '-show_entries', 'format=duration', '-i', f'{filename}']
-    output = subprocess.run(command, capture_output=True)
-    
-    duration = re.search(r'[\D]=([\d\.]*)', str(output.stdout)).groups()[0]
-    duration = float(duration)
-    
-    return duration
-
-
-def split_sanitize_input(raw_input: str) -> list[int]:
-    """ Returns a list of IDs from a string input, including ranges and single IDs """
-    
-    # removes all non-numeric characters except for commas and hyphens
-    sanitized = re.sub(r"[^\d\-,]*", "", raw_input.strip())
-    
-    if "," in sanitized:
-        IDranges = sanitized.split(',')
-    else:
-        IDranges = [sanitized,]
-    
-    inputs = []
-    for ids in IDranges:
-        if "-" in ids:
-            start, end = ids.split('-')
-            inputs.extend(list(range(int(start), int(end) + 1)))
-        else:
-            inputs.append(int(ids))
-    inputs.sort()
-    
-    return inputs
-
-
-def splash() -> str:
-    """ Displays splash screen """
-    return """
-███████╗ ██████╗ ████████╗██╗███████╗██╗   ██╗
-╚══███╔╝██╔═══██╗╚══██╔══╝██║██╔════╝╚██╗ ██╔╝
-  ███╔╝ ██║   ██║   ██║   ██║█████╗   ╚████╔╝ 
- ███╔╝  ██║   ██║   ██║   ██║██╔══╝    ╚██╔╝  
-███████╗╚██████╔╝   ██║   ██║██║        ██║   
-╚══════╝ ╚═════╝    ╚═╝   ╚═╝╚═╝        ╚═╝   
-    """
-
-
-def clear() -> None:
-    """ Clear the console window """
-    if platform.system() == WINDOWS_SYSTEM:
-        os.system('cls')
-    else:
-        os.system('clear')
 
 
 def set_audio_tags(filename, artists: list[str], genres: list[str], name, album_name, album_artist, release_year, disc_number, track_number, total_tracks, total_discs, compilation: int, lyrics: list[str] | None) -> None:
@@ -260,93 +271,26 @@ def set_music_thumbnail_tag(filename, img: bytes) -> None:
     tags.save()
 
 
-def regex_input_for_urls(search_input) -> tuple[str, str, str, str, str, str]:
+def regex_input_for_urls(search_input: str, non_global: bool = False) -> tuple[
+    str | None, str | None, str | None, str | None, str | None, str | None]:
     """ Since many kinds of search may be passed at the command line, process them all here. """
-    track_uri_search = re.search(
-        r'^spotify:track:(?P<TrackID>[0-9a-zA-Z]{22})$', search_input)
-    track_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/track/(?P<TrackID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    album_uri_search = re.search(
-        r'^spotify:album:(?P<AlbumID>[0-9a-zA-Z]{22})$', search_input)
-    album_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/album/(?P<AlbumID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    playlist_uri_search = re.search(
-        r'^spotify:playlist:(?P<PlaylistID>[0-9a-zA-Z]{22})$', search_input)
-    playlist_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/playlist/(?P<PlaylistID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    episode_uri_search = re.search(
-        r'^spotify:episode:(?P<EpisodeID>[0-9a-zA-Z]{22})$', search_input)
-    episode_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/episode/(?P<EpisodeID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    show_uri_search = re.search(
-        r'^spotify:show:(?P<ShowID>[0-9a-zA-Z]{22})$', search_input)
-    show_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/show/(?P<ShowID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    artist_uri_search = re.search(
-        r'^spotify:artist:(?P<ArtistID>[0-9a-zA-Z]{22})$', search_input)
-    artist_url_search = re.search(
-        r'^(https?://)?open\.spotify\.com(?:/intl-\w+)?/artist/(?P<ArtistID>[0-9a-zA-Z]{22})(\?si=.+?)?$',
-        search_input,
-    )
-
-    if track_uri_search is not None or track_url_search is not None:
-        track_id_str = (track_uri_search
-                        if track_uri_search is not None else
-                        track_url_search).group('TrackID')
-    else:
-        track_id_str = None
-
-    if album_uri_search is not None or album_url_search is not None:
-        album_id_str = (album_uri_search
-                        if album_uri_search is not None else
-                        album_url_search).group('AlbumID')
-    else:
-        album_id_str = None
-
-    if playlist_uri_search is not None or playlist_url_search is not None:
-        playlist_id_str = (playlist_uri_search
-                           if playlist_uri_search is not None else
-                           playlist_url_search).group('PlaylistID')
-    else:
-        playlist_id_str = None
-
-    if episode_uri_search is not None or episode_url_search is not None:
-        episode_id_str = (episode_uri_search
-                          if episode_uri_search is not None else
-                          episode_url_search).group('EpisodeID')
-    else:
-        episode_id_str = None
-
-    if show_uri_search is not None or show_url_search is not None:
-        show_id_str = (show_uri_search
-                       if show_uri_search is not None else
-                       show_url_search).group('ShowID')
-    else:
-        show_id_str = None
-
-    if artist_uri_search is not None or artist_url_search is not None:
-        artist_id_str = (artist_uri_search
-                         if artist_uri_search is not None else
-                         artist_url_search).group('ArtistID')
-    else:
-        artist_id_str = None
-
-    return track_id_str, album_id_str, playlist_id_str, episode_id_str, show_id_str, artist_id_str
+    
+    link_types = ("track", "album", "playlist", "episode", "show", "artist")
+    base_uri_shell = r'^sp'+r'otify:%s:([0-9a-zA-Z]{22})$'
+    base_url_shell = r'^(?:https?://)?open\.sp'+r'otify\.com(?:/intl-\w+)?/%s/([0-9a-zA-Z]{22})(?:\?si=.+?)?$'
+    if non_global:
+        base_uri_shell = base_uri_shell[1:-1]
+        base_url_shell = base_url_shell[1:-1]
+    
+    result = [None, None, None, None, None, None]
+    for i, req_type in enumerate(link_types):
+        uri_res = re.search(base_uri_shell % req_type, search_input)
+        url_res = re.search(base_url_shell % req_type, search_input)
+        
+        if uri_res is not None or url_res is not None:
+            result[i] = uri_res.group(1) if uri_res else url_res.group(1)
+    
+    return tuple(result)
 
 
 def fix_filename(name: str | PurePath | Path ):
@@ -407,5 +351,5 @@ def wait_between_downloads() -> None:
         return
     
     if waittime > 5:
-        Printer.print(PrintChannel.DOWNLOADS, f'###   WAITING FOR {waittime} SECONDS BETWEEN DOWNLOADS   ###')
-    time.sleep(waittime)
+        Printer.print(PrintChannel.DOWNLOADS, f'###   PAUSED: WAITING FOR {waittime} SECONDS BETWEEN DOWNLOADS   ###')
+    sleep(waittime)

@@ -7,13 +7,32 @@ It's like youtube-dl, but for that other music platform.
 
 import argparse
 
+from zotify import __version__
 from zotify.app import client
 from zotify.config import CONFIG_VALUES
+
+class DepreciatedAction(argparse.Action):
+    def __init__(self, option_strings, dest, **kwargs):
+        if "help" in kwargs:
+            kwargs["help"] = "[DEPRECATED] " + kwargs["help"]
+        super().__init__(option_strings, dest, **kwargs)
+    
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(f"###   WARNING: ARGUMENT `{option_string}` IS DEPRECIATED, IGNORING   ###")
+        print(f"###   THIS WILL BE REMOVED IN FUTURE VERSIONS   ###")
+        print(f"###   {self.help}   ###")
+        setattr(namespace, self.dest, values)
 
 def main():
     parser = argparse.ArgumentParser(prog='zotify',
         description='A music and podcast downloader needing only Python and FFMPEG.')
     
+    parser.register('action', 'depreciated_ignore_warn', DepreciatedAction)
+    
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        version=f'Zotify {__version__}',
+                        help='Show the version of Zotify')
     parser.add_argument('-ns', '--no-splash',
                         action='store_true',
                         help='Suppress the splash screen when loading')
@@ -57,6 +76,10 @@ def main():
                        type=str,
                        dest='file_of_urls',
                        help='Download all tracks/albums/episodes/playlists URLs within the file passed as argument')
+    group.add_argument('-d', '--download',
+                       type=str,
+                       help='Use `--file` (`-f`) instead',
+                       action='depreciated_ignore_warn')
     
     for configkey in CONFIG_VALUES:
         parser.add_argument(*CONFIG_VALUES[configkey]['arg'],
@@ -69,8 +92,11 @@ def main():
     parser.set_defaults(func=client)
     
     args = parser.parse_args()
-    args.func(args)
-    print("\n")
+    try:
+        args.func(args)
+    except KeyboardInterrupt:
+        print("\n")
+        raise
 
 
 if __name__ == '__main__':

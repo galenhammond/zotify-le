@@ -3,64 +3,7 @@ import sys
 from pathlib import Path, PurePath
 from typing import Any
 
-
-ROOT_PATH = 'ROOT_PATH'
-ROOT_PODCAST_PATH = 'ROOT_PODCAST_PATH'
-SKIP_EXISTING = 'SKIP_EXISTING'
-SKIP_PREVIOUSLY_DOWNLOADED = 'SKIP_PREVIOUSLY_DOWNLOADED'
-DOWNLOAD_FORMAT = 'DOWNLOAD_FORMAT'
-BULK_WAIT_TIME = 'BULK_WAIT_TIME'
-OVERRIDE_AUTO_WAIT = 'OVERRIDE_AUTO_WAIT'
-CHUNK_SIZE = 'CHUNK_SIZE'
-SPLIT_ALBUM_DISCS = 'SPLIT_ALBUM_DISCS'
-DOWNLOAD_REAL_TIME = 'DOWNLOAD_REAL_TIME'
-LANGUAGE = 'LANGUAGE'
-DOWNLOAD_QUALITY = 'DOWNLOAD_QUALITY'
-TRANSCODE_BITRATE = 'TRANSCODE_BITRATE'
-SONG_ARCHIVE_LOCATION = 'SONG_ARCHIVE_LOCATION'
-SAVE_CREDENTIALS = 'SAVE_CREDENTIALS'
-CREDENTIALS_LOCATION = 'CREDENTIALS_LOCATION'
-OUTPUT = 'OUTPUT'
-PRINT_SPLASH = 'PRINT_SPLASH'
-PRINT_SKIPS = 'PRINT_SKIPS'
-PRINT_DOWNLOAD_PROGRESS = 'PRINT_DOWNLOAD_PROGRESS'
-PRINT_ERRORS = 'PRINT_ERRORS'
-PRINT_DOWNLOADS = 'PRINT_DOWNLOADS'
-PRINT_API_ERRORS = 'PRINT_API_ERRORS'
-TEMP_DOWNLOAD_DIR = 'TEMP_DOWNLOAD_DIR'
-MD_DISC_TRACK_TOTALS = "MD_DISC_TRACK_TOTALS"
-MD_SAVE_GENRES = 'MD_SAVE_GENRES'
-MD_ALLGENRES = 'MD_ALLGENRES'
-MD_GENREDELIMITER = 'MD_GENREDELIMITER'
-MD_ARTISTDELIMITER = 'MD_ARTISTDELIMITER'
-MD_SAVE_LYRICS = 'MD_SAVE_LYRICS'
-PRINT_PROGRESS_INFO = 'PRINT_PROGRESS_INFO'
-PRINT_WARNINGS = 'PRINT_WARNINGS'
-RETRY_ATTEMPTS = 'RETRY_ATTEMPTS'
-CONFIG_VERSION = 'CONFIG_VERSION'
-DOWNLOAD_LYRICS = 'DOWNLOAD_LYRICS'
-OUTPUT_PLAYLIST = 'OUTPUT_PLAYLIST'
-OUTPUT_PLAYLIST_EXT = 'OUTPUT_PLAYLIST_EXT'
-OUTPUT_LIKED_SONGS = 'OUTPUT_LIKED_SONGS'
-OUTPUT_SINGLE = 'OUTPUT_SINGLE'
-OUTPUT_ALBUM = 'OUTPUT_ALBUM'
-DISABLE_DIRECTORY_ARCHIVES = 'DISABLE_DIRECTORY_ARCHIVES'
-LYRICS_LOCATION = 'LYRICS_LOCATION'
-FFMPEG_LOG_LEVEL = 'FFMPEG_LOG_LEVEL'
-PRINT_URL_PROGRESS = 'PRINT_URL_PROGRESS'
-PRINT_ALBUM_PROGRESS = 'PRINT_ALBUM_PROGRESS'
-PRINT_ARTIST_PROGRESS = 'PRINT_ARTIST_PROGRESS'
-PRINT_PLAYLIST_PROGRESS = 'PRINT_PLAYLIST_PROGRESS'
-EXPORT_M3U8 = 'EXPORT_M3U8'
-LIKED_SONGS_ARCHIVE_M3U8 = 'LIKED_SONGS_ARCHIVE_M3U8'
-ALBUM_ART_JPG_FILE = 'ALBUM_ART_JPG_FILE'
-MAX_FILENAME_LENGTH = 'MAX_FILENAME_LENGTH'
-ALWAYS_CHECK_LYRICS = 'ALWAYS_CHECK_LYRICS'
-M3U8_LOCATION = 'M3U8_LOCATION'
-M3U8_REL_PATHS = 'M3U8_REL_PATHS'
-DOWNLOAD_PARENT_ALBUM = 'DOWNLOAD_PARENT_ALBUM'
-REDIRECT_URI = "REDIRECT_URI"
-
+from zotify.const import *
 
 CONFIG_VALUES = {
     ROOT_PATH:                  { 'default': '~/Music/Zotify Music',    'type': str,    'arg': ('-rp', '--root-path'                     ,) },
@@ -94,6 +37,7 @@ CONFIG_VALUES = {
     TRANSCODE_BITRATE:          { 'default': 'auto',                    'type': str,    'arg': ('-b', '--bitrate', '--transcode-bitrate' ,) },
     ALBUM_ART_JPG_FILE:         { 'default': 'False',                   'type': bool,   'arg': ('--album-art-jpg-file'                   ,) },
     SONG_ARCHIVE_LOCATION:      { 'default': '',                        'type': str,    'arg': ('--song-archive-location'                ,) },
+    DISABLE_SONG_ARCHIVE:       { 'default': 'False',                   'type': bool,   'arg': ('--disable-song-archive'                 ,) },
     DISABLE_DIRECTORY_ARCHIVES: { 'default': 'False',                   'type': bool,   'arg': ('--disable-directory-archives'           ,) },
     SPLIT_ALBUM_DISCS:          { 'default': 'False',                   'type': bool,   'arg': ('--split-album-discs'                    ,) },
     DOWNLOAD_LYRICS:            { 'default': 'True',                    'type': bool,   'arg': ('--download-lyrics'                      ,) },
@@ -116,14 +60,14 @@ CONFIG_VALUES = {
     LANGUAGE:                   { 'default': 'en',                      'type': str,    'arg': ('--language'                             ,) },
     REDIRECT_URI:               { 'default': '127.0.0.1:4381',          'type': str,    'arg': ('--redirect-uri'                         ,) },
     PRINT_SPLASH:               { 'default': 'False',                   'type': bool,   'arg': ('--print-splash'                         ,) },
+    PRINT_PROGRESS_INFO:        { 'default': 'True',                    'type': bool,   'arg': ('--print-progress-info'                  ,) },
     PRINT_SKIPS:                { 'default': 'True',                    'type': bool,   'arg': ('--print-skips'                          ,) },
+    PRINT_DOWNLOADS:            { 'default': 'True',                    'type': bool,   'arg': ('--print-downloads'                      ,) },
     PRINT_DOWNLOAD_PROGRESS:    { 'default': 'True',                    'type': bool,   'arg': ('--print-download-progress'              ,) },
     PRINT_URL_PROGRESS:         { 'default': 'True',                    'type': bool,   'arg': ('--print-url-progress'                   ,) },
     PRINT_ALBUM_PROGRESS:       { 'default': 'True',                    'type': bool,   'arg': ('--print-album-progress'                 ,) },
     PRINT_ARTIST_PROGRESS:      { 'default': 'True',                    'type': bool,   'arg': ('--print-artist-progress'                ,) },
     PRINT_PLAYLIST_PROGRESS:    { 'default': 'True',                    'type': bool,   'arg': ('--print-playlist-progress'              ,) },
-    PRINT_PROGRESS_INFO:        { 'default': 'True',                    'type': bool,   'arg': ('--print-progress-info'                  ,) },
-    PRINT_DOWNLOADS:            { 'default': 'True',                    'type': bool,   'arg': ('--print-downloads'                      ,) },
     PRINT_WARNINGS:             { 'default': 'True',                    'type': bool,   'arg': ('--print-warnings'                       ,) },
     PRINT_ERRORS:               { 'default': 'True',                    'type': bool,   'arg': ('--print-errors'                         ,) },
     PRINT_API_ERRORS:           { 'default': 'True',                    'type': bool,   'arg': ('--print-api-errors'                     ,) },
@@ -146,7 +90,7 @@ class Config:
         else:
             config_fp = system_paths[sys.platform] / 'config.json'
         if args.config_location:
-            config_fp = Path(args.config_location) 
+            config_fp = Path(args.config_location)
             if config_fp.is_dir():
                 config_fp = config_fp / 'config.json'
         
@@ -167,13 +111,13 @@ class Config:
         # Add default values for missing keys
         for key in CONFIG_VALUES:
             if key not in cls.Values:
-                # print(key)
+                # Printer.print(key)
                 cls.Values[key] = cls.parse_arg_value(key, CONFIG_VALUES[key]['default'])
         
         # Override config from commandline arguments
         for key in CONFIG_VALUES:
             if key.lower() in vars(args) and vars(args)[key.lower()] is not None:
-                # print(f"{key} {cls.Values[key]} -> {cls.parse_arg_value(key, vars(args)[key.lower()])}")
+                # Printer.print(f"{key} {cls.Values[key]} -> {cls.parse_arg_value(key, vars(args)[key.lower()])}")
                 cls.Values[key] = cls.parse_arg_value(key, vars(args)[key.lower()])
         
         if args.no_splash:
@@ -378,6 +322,10 @@ class Config:
     @classmethod
     def get_disable_directory_archives(cls) -> bool:
         return cls.get(DISABLE_DIRECTORY_ARCHIVES)
+    
+    @classmethod
+    def get_disable_song_archive(cls) -> bool:
+        return cls.get(DISABLE_SONG_ARCHIVE)
     
     @classmethod
     def get_lyrics_location(cls) -> PurePath | None:

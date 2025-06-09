@@ -86,6 +86,7 @@ Set arguments in the commandline like this: `-ie False` or `--codec mp3`. Wrap c
 | `TRANSCODE_BITRATE`          | `-b`, `--bitrate`                     |           | Overwrite the bitrate for FFMPEG encoding                                                    |
 | `ALBUM_ART_JPG_FILE`         | `--album-art-jpg-file`                | False     | Save album art as a separate .jpg file                                                       |
 | `SONG_ARCHIVE_LOCATION`      | `--song-archive-location`             |           | Directory where Zotify saves the global song_archive file                                    |
+| `DISABLE_SONG_ARCHIVE`       | `--disable-song-archive`              | False     | Disable global song_archive for `SKIP_PREVIOUSLY_DOWNLOADED` checks                          |
 | `DISABLE_DIRECTORY_ARCHIVES` | `--disable-directory-archives`        | False     | Disable local song_archive in download directories                                           |
 | `SPLIT_ALBUM_DISCS`          | `--split-album-discs`                 | False     | Saves each disk in its own folder                                                            |
 | `DOWNLOAD_LYRICS`            | `--download-lyrics`                   | True      | Downloads synced lyrics in .lrc format, uses unsynced as fallback                            |
@@ -108,14 +109,14 @@ Set arguments in the commandline like this: `-ie False` or `--codec mp3`. Wrap c
 | `LANGUAGE`                   | `--language`                          | en        | Language of metadata                                                                         |
 | `REDIRECT_URI`               | `--redirect-uri`                      | 127.0.0.1:4381     | Local callback point for OAuth login requests                                       |
 | `PRINT_SPLASH`               | `--print-splash`                      | False     | Show the Zotify logo at startup                                                              |
-| `PRINT_SKIPS`                | `--print-skips`                       | True      | Show messages if a song is being skipped                                                     |
-| `PRINT_DOWNLOAD_PROGRESS`    | `--print-download-progress`           | True      | Show song download progress bar                                                              |
+| `PRINT_PROGRESS_INFO`        | `--print-progress-info`               | True      | Show message contianing download progress information                                        |
+| `PRINT_SKIPS`                | `--print-skips`                       | True      | Show message when a track is skipped                                                         |
+| `PRINT_DOWNLOADS`            | `--print-downloads`                   | True      | Show message when a track is downloaded successfully                                         |
+| `PRINT_DOWNLOAD_PROGRESS`    | `--print-download-progress`           | True      | Show track download progress bar                                                             |
 | `PRINT_URL_PROGRESS`         | `--print-url-progress`                | True      | Show url progress bar                                                                        |
 | `PRINT_ALBUM_PROGRESS`       | `--print-album-progress`              | True      | Show album progress bar                                                                      |
 | `PRINT_ARTIST_PROGRESS`      | `--print-artist-progress`             | True      | Show artist progress bar                                                                     |
 | `PRINT_PLAYLIST_PROGRESS`    | `--print-playlist-progress`           | True      | Show playlist progress bar                                                                   |
-| `PRINT_PROGRESS_INFO`        | `--print-progress-info`               | True      | Show download progress info                                                                  |
-| `PRINT_DOWNLOADS`            | `--print-downloads`                   | True      | Print messages when a song is finished downloading                                           |
 | `PRINT_WARNINGS`             | `--print-warnings`                    | True      | Show warnings                                                                                |
 | `PRINT_ERRORS`               | `--print-errors`                      | True      | Show errors                                                                                  |
 | `PRINT_API_ERRORS`           | `--print-api-errors`                  | True      | Show API errors                                                                              |

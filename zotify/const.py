@@ -1,111 +1,72 @@
-FOLLOWED_ARTISTS_URL = 'https://api.spot'+'ify.com/v1/me/following?type=artist'
-
-SAVED_TRACKS_URL = 'https://api.spot'+'ify.com/v1/me/tracks'
-
-TRACKS_URL = 'https://api.spot'+'ify.com/v1/tracks'
-
-TRACK_STATS_URL = 'https://api.spot'+'ify.com/v1/audio-features/'
-
-TRACKNUMBER = 'tracknumber'
-
-TOTALTRACKS = 'totaltracks'
-
+# Metadata musictag keys
+ALBUMARTIST = 'albumartist'
+ARTWORK = 'artwork'
 DISCNUMBER = 'discnumber'
-
+GENRE = 'genre'
+LYRICS = 'lyrics'
 TOTALDISCS = 'totaldiscs'
-
+TOTALTRACKS = 'totaltracks'
+TRACKNUMBER = 'tracknumber'
+TRACKTITLE = 'tracktitle'
 YEAR = 'year'
 
-LYRICS = 'lyrics'
-
+# Both
+ALBUM = 'album'
+ARTIST = 'artist'
 COMPILATION = "compilation"
 
-ALBUM = 'album'
-
-TRACKTITLE = 'tracktitle'
-
-ARTIST = 'artist'
-
-ARTISTS = 'artists'
-
-ALBUMARTIST = 'albumartist'
-
-GENRES = 'genres'
-
-GENRE = 'genre'
-
-ARTWORK = 'artwork'
-
-TRACKS = 'tracks'
-
-TRACK = 'track'
-
-ITEMS = 'items'
-
-NAME = 'name'
-
-HREF = 'href'
-
-ID = 'id'
-
-URL = 'url'
-
-RELEASE_DATE = 'release_date'
-
-IMAGES = 'images'
-
-LIMIT = 'limit'
-
-OFFSET = 'offset'
-
-AUTHORIZATION = 'Authorization'
-
-IS_PLAYABLE = 'is_playable'
-
-DURATION_MS = 'duration_ms'
-
-TRACK_NUMBER = 'track_number'
-
-TOTAL_TRACKS = "total_tracks"
-
-DISC_NUMBER = 'disc_number'
-
-ALBUM_TYPE = 'album_type'
-
-SHOW = 'show'
-
-ERROR = 'error'
-
-EXPLICIT = 'explicit'
-
-PLAYLIST = 'playlist'
-
-PLAYLISTS = 'playlists'
-
-OWNER = 'owner'
-
-DISPLAY_NAME = 'display_name'
-
+# API Dictionary Keys
 ALBUMS = 'albums'
-
-TYPE = 'type'
-
-PREMIUM = 'premium'
-
+ALBUM_TYPE = 'album_type'
+ARTISTS = 'artists'
+DISC_NUMBER = 'disc_number'
+DISPLAY_NAME = 'display_name'
+DURATION_MS = 'duration_ms'
+ERROR = 'error'
+EXPLICIT = 'explicit'
+GENRES = 'genres'
+HREF = 'href'
+ID = 'id'
+IMAGES = 'images'
+IS_PLAYABLE = 'is_playable'
+ITEMS = 'items'
+NAME = 'name'
+OWNER = 'owner'
+PLAYLIST = 'playlist'
+PLAYLISTS = 'playlists'
+RELEASE_DATE = 'release_date'
+SHOW = 'show'
+TOTAL_TRACKS = "total_tracks"
+TRACK = 'track'
+TRACKS = 'tracks'
+TRACK_NUMBER = 'track_number'
+URL = 'url'
 WIDTH = 'width'
 
+# Both
+TYPE = 'type'
+
+# API Account Attributes
+AUTHORIZATION = 'Authorization'
+LIMIT = 'limit'
+OFFSET = 'offset'
+PLAYLIST_READ_PRIVATE = 'playlist-read-private'
+PREMIUM = 'premium'
+USER_FOLLOW_READ = 'user-follow-read'
+USER_LIBRARY_READ = 'user-library-read'
 USER_READ_EMAIL = 'user-read-email'
 
-USER_FOLLOW_READ = 'user-follow-read'
+# API URLs
+FOLLOWED_ARTISTS_URL = 'https://api.sp'+'otify.com/v1/me/following?type=artist'
+SAVED_TRACKS_URL = 'https://api.sp'+'otify.com/v1/me/tracks'
+TRACKS_URL = 'https://api.sp'+'otify.com/v1/tracks'
+TRACK_STATS_URL = 'https://api.sp'+'otify.com/v1/audio-features/'
 
-PLAYLIST_READ_PRIVATE = 'playlist-read-private'
-
-USER_LIBRARY_READ = 'user-library-read'
-
+# System Constants
+LINUX_SYSTEM = 'Linux'
 WINDOWS_SYSTEM = 'Windows'
 
-LINUX_SYSTEM = 'Linux'
-
+# FFMPEG
 CODEC_MAP = {
     'aac': 'aac',
     'fdk_aac': 'libfdk_aac',
@@ -115,7 +76,6 @@ CODEC_MAP = {
     'vorbis': 'copy',
     'copy': 'copy'
 }
-
 EXT_MAP = {
     'aac': 'm4a',
     'fdk_aac': 'm4a',
@@ -125,3 +85,62 @@ EXT_MAP = {
     'vorbis': 'ogg',
     'copy': 'ogg'
 }
+
+# Config Keys
+ROOT_PATH = 'ROOT_PATH'
+ROOT_PODCAST_PATH = 'ROOT_PODCAST_PATH'
+SKIP_EXISTING = 'SKIP_EXISTING'
+SKIP_PREVIOUSLY_DOWNLOADED = 'SKIP_PREVIOUSLY_DOWNLOADED'
+DOWNLOAD_FORMAT = 'DOWNLOAD_FORMAT'
+BULK_WAIT_TIME = 'BULK_WAIT_TIME'
+OVERRIDE_AUTO_WAIT = 'OVERRIDE_AUTO_WAIT'
+CHUNK_SIZE = 'CHUNK_SIZE'
+SPLIT_ALBUM_DISCS = 'SPLIT_ALBUM_DISCS'
+DOWNLOAD_REAL_TIME = 'DOWNLOAD_REAL_TIME'
+LANGUAGE = 'LANGUAGE'
+DOWNLOAD_QUALITY = 'DOWNLOAD_QUALITY'
+TRANSCODE_BITRATE = 'TRANSCODE_BITRATE'
+SONG_ARCHIVE_LOCATION = 'SONG_ARCHIVE_LOCATION'
+SAVE_CREDENTIALS = 'SAVE_CREDENTIALS'
+CREDENTIALS_LOCATION = 'CREDENTIALS_LOCATION'
+OUTPUT = 'OUTPUT'
+PRINT_SPLASH = 'PRINT_SPLASH'
+PRINT_SKIPS = 'PRINT_SKIPS'
+PRINT_DOWNLOAD_PROGRESS = 'PRINT_DOWNLOAD_PROGRESS'
+PRINT_ERRORS = 'PRINT_ERRORS'
+PRINT_DOWNLOADS = 'PRINT_DOWNLOADS'
+PRINT_API_ERRORS = 'PRINT_API_ERRORS'
+TEMP_DOWNLOAD_DIR = 'TEMP_DOWNLOAD_DIR'
+MD_DISC_TRACK_TOTALS = "MD_DISC_TRACK_TOTALS"
+MD_SAVE_GENRES = 'MD_SAVE_GENRES'
+MD_ALLGENRES = 'MD_ALLGENRES'
+MD_GENREDELIMITER = 'MD_GENREDELIMITER'
+MD_ARTISTDELIMITER = 'MD_ARTISTDELIMITER'
+MD_SAVE_LYRICS = 'MD_SAVE_LYRICS'
+PRINT_PROGRESS_INFO = 'PRINT_PROGRESS_INFO'
+PRINT_WARNINGS = 'PRINT_WARNINGS'
+RETRY_ATTEMPTS = 'RETRY_ATTEMPTS'
+CONFIG_VERSION = 'CONFIG_VERSION'
+DOWNLOAD_LYRICS = 'DOWNLOAD_LYRICS'
+OUTPUT_PLAYLIST = 'OUTPUT_PLAYLIST'
+OUTPUT_PLAYLIST_EXT = 'OUTPUT_PLAYLIST_EXT'
+OUTPUT_LIKED_SONGS = 'OUTPUT_LIKED_SONGS'
+OUTPUT_SINGLE = 'OUTPUT_SINGLE'
+OUTPUT_ALBUM = 'OUTPUT_ALBUM'
+DISABLE_DIRECTORY_ARCHIVES = 'DISABLE_DIRECTORY_ARCHIVES'
+LYRICS_LOCATION = 'LYRICS_LOCATION'
+FFMPEG_LOG_LEVEL = 'FFMPEG_LOG_LEVEL'
+PRINT_URL_PROGRESS = 'PRINT_URL_PROGRESS'
+PRINT_ALBUM_PROGRESS = 'PRINT_ALBUM_PROGRESS'
+PRINT_ARTIST_PROGRESS = 'PRINT_ARTIST_PROGRESS'
+PRINT_PLAYLIST_PROGRESS = 'PRINT_PLAYLIST_PROGRESS'
+EXPORT_M3U8 = 'EXPORT_M3U8'
+LIKED_SONGS_ARCHIVE_M3U8 = 'LIKED_SONGS_ARCHIVE_M3U8'
+ALBUM_ART_JPG_FILE = 'ALBUM_ART_JPG_FILE'
+MAX_FILENAME_LENGTH = 'MAX_FILENAME_LENGTH'
+ALWAYS_CHECK_LYRICS = 'ALWAYS_CHECK_LYRICS'
+M3U8_LOCATION = 'M3U8_LOCATION'
+M3U8_REL_PATHS = 'M3U8_REL_PATHS'
+DOWNLOAD_PARENT_ALBUM = 'DOWNLOAD_PARENT_ALBUM'
+REDIRECT_URI = "REDIRECT_URI"
+DISABLE_SONG_ARCHIVE = 'DISABLE_SONG_ARCHIVE'

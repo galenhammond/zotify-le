@@ -1,4 +1,5 @@
 from __future__ import annotations
+__version__ = "0.7.0"
 
 from enum import IntEnum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -29,7 +30,6 @@ from requests import HTTPError, get, post
 
 API_URL = "https://api.sp" + "otify.com/v1/"
 AUTH_URL = "https://accounts.sp" + "otify.com/"
-REDIRECT_URI = "127.0.0.1:4381"
 CLIENT_ID = "65b70807" + "3fc0480e" + "a92a0772" + "33ca87bd"
 SCOPES = [
     "app-remote-control",
@@ -89,7 +89,7 @@ class Session(LibrespotSession):
         self.__language = language
         self.connect()
         self.authenticate(session_builder.login_credentials)
-
+    
     @staticmethod
     def from_file(cred_file: Path | str, language: str = "en") -> Session:
         """
@@ -109,7 +109,7 @@ class Session(LibrespotSession):
         )
         session = LibrespotSession.Builder(config).stored_file(str(cred_file))
         return Session(session, language)
-
+    
     @staticmethod
     def from_oauth(
         oauth: OAuth,
@@ -142,19 +142,19 @@ class Session(LibrespotSession):
             auth_data=token.access_token.encode(),
         )
         return Session(builder, language, oauth)
-
+    
     def oauth(self) -> OAuth | None:
         """Returns OAuth service"""
         return self.__oauth
-
+    
     def language(self) -> str:
         """Returns session language"""
         return self.__language
-
+    
     def is_premium(self) -> bool:
         """Returns users premium account status"""
         return self.get_user_attribute("type") == "premium"
-
+    
     def authenticate(self, credential: Authentication.LoginCredentials) -> None: # type: ignore
         """
         Log in to the thing
@@ -258,11 +258,11 @@ class OAuth:
     __server_thread: Thread
     __token: TokenProvider.StoredToken
     username: str
-
-    def __init__(self, username: str, redirect_uri: str = REDIRECT_URI) -> None:
+    
+    def __init__(self, username: str, redirect_uri: str = "127.0.0.1:4381") -> None:
         self.username = username
         self.redirect_uri = f"http://{redirect_uri}/login"
-
+    
     def auth_interactive(self) -> str:
         """
         Starts local server for token callback
@@ -282,7 +282,7 @@ class OAuth:
             "code_challenge": code_challenge,
         }
         return f"{AUTH_URL}authorize?{urlencode(params)}"
-
+    
     def await_token(self) -> TokenProvider.StoredToken:
         """
         Blocks until server thread gets token
@@ -291,7 +291,7 @@ class OAuth:
         """
         self.__server_thread.join()
         return self.__token
-
+    
     def get_token(self) -> TokenProvider.StoredToken:
         """
         Gets a valid token
@@ -303,7 +303,7 @@ class OAuth:
         elif self.__token.expired():
             self.set_token(self.__token.refresh_token, OAuth.RequestType.REFRESH)
         return self.__token
-
+    
     def set_token(self, code: str, request_type: RequestType) -> None:
         """
         Fetches and sets stored token
@@ -332,20 +332,20 @@ class OAuth:
                 f"Error fetching token: {response.status_code}, {response.text}"
             )
         self.__token = TokenProvider.StoredToken(response.json())
-
+    
     def __run_server(self) -> None:
         server_address = ("127.0.0.1", 4381)
         httpd = self.OAuthHTTPServer(server_address, self.RequestHandler, self)
         httpd.authenticator = self
         httpd.serve_forever()
-
+    
     class RequestType(IntEnum):
         LOGIN = 0
         REFRESH = 1
-
+    
     class OAuthHTTPServer(HTTPServer):
         authenticator: OAuth
-
+        
         def __init__(
             self,
             server_address: tuple[str, int],
@@ -354,16 +354,16 @@ class OAuth:
         ):
             super().__init__(server_address, RequestHandlerClass)
             self.authenticator = authenticator
-
+    
     class RequestHandler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args):
             return
-
+        
         def do_GET(self) -> None:
             parsed_path = urlparse(self.path)
             query_params = parse_qs(parsed_path.query)
             code = query_params.get("code")
-
+            
             if code:
                 if isinstance(self.server, OAuth.OAuthHTTPServer):
                     self.server.authenticator.set_token(

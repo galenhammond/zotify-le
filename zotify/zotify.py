@@ -1,7 +1,8 @@
 import json
-from pathlib import Path
-import datetime, time
+import datetime
 import requests
+from time import sleep
+from pathlib import Path
 from librespot.audio.decoders import VorbisOnlyAudioQuality
 
 from zotify import OAuth, Session
@@ -22,8 +23,9 @@ class Zotify:
     
     @classmethod
     def login(cls, args):
-        """ Authenticates with Spotify and saves credentials to a file """
-    
+        """ Authenticates and saves credentials to a file """
+        from zotify.termoutput import Printer, PrintChannel
+        
         # Create session
         if args.username not in {None, ""} and args.token not in {None, ""}:
             oauth = OAuth(args.username, cls.CONFIG.get_redirect_uri())
@@ -42,7 +44,7 @@ class Zotify:
                 username = input("Username: ")
             oauth = OAuth(username, cls.CONFIG.get_redirect_uri())
             auth_url = oauth.auth_interactive()
-            print(f"\nClick on the following link to login:\n{auth_url}")
+            Printer.print(PrintChannel.MANDATORY, f"\nClick on the following link to login:\n{auth_url}")
             cls.SESSION = Session.from_oauth(
                 oauth, cls.CONFIG.get_credentials_location(), cls.CONFIG.get_language()
             )
@@ -84,19 +86,20 @@ class Zotify:
         try:
             responsejson = response.json()
         except json.decoder.JSONDecodeError:
-            responsejson = {"error": {"status": "unknown", "message": "received an empty response"}}
+            responsejson = {"error": {"status": "Unknown", "message": "Received an empty response"}}
         
         if not responsejson or 'error' in responsejson:
             if tryCount < (cls.CONFIG.get_retry_attempts() - 1):
-                Printer.print(PrintChannel.WARNINGS, f"Spotify API Error (try {tryCount + 1}) ({responsejson['error']['status']}): {responsejson['error']['message']}")
-                time.sleep(5)
+                Printer.print(PrintChannel.WARNINGS, F"###   WARNING:  API ERROR (TRY {tryCount + 1}) - RETRYING   ###")
+                Printer.print(PrintChannel.WARNINGS, f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
+                sleep(5)
                 return cls.invoke_url(url, tryCount + 1)
             
-            Printer.print(PrintChannel.API_ERRORS, f"Spotify API Error ({responsejson['error']['status']}): {responsejson['error']['message']}")
+            Printer.print(PrintChannel.API_ERRORS, F"###   API ERROR:  API ERROR (TRY {tryCount + 1}) - RETRY LIMIT EXCEDED   ###")
+            Printer.print(PrintChannel.API_ERRORS, f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
         
         return responsetext, responsejson
     
     @classmethod
     def check_premium(cls) -> bool:
-        """ If user has spotify premium return true """
         return (cls.SESSION.get_user_attribute(TYPE) == PREMIUM)

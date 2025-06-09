@@ -1,12 +1,12 @@
 from zotify.const import ITEMS, ID, TRACK, NAME, TYPE
 from zotify.podcast import download_episode
-from zotify.termoutput import Printer
+from zotify.termoutput import Printer, PrintChannel
 from zotify.track import download_track
-from zotify.utils import split_sanitize_input, strptime_utc
+from zotify.utils import search_select, split_sanitize_input, strptime_utc
 from zotify.zotify import Zotify
 
-MY_PLAYLISTS_URL = 'https://api.spot'+'ify.com/v1/me/playlists'
-PLAYLISTS_URL = 'https://api.spot'+'ify.com/v1/playlists'
+MY_PLAYLISTS_URL = 'https://api.sp'+'otify.com/v1/me/playlists'
+PLAYLISTS_URL = 'https://api.sp'+'otify.com/v1/playlists'
 
 
 def get_all_playlists():
@@ -87,13 +87,11 @@ def download_from_user_playlist():
     
     count = 1
     for playlist in playlists:
-        print(str(count) + ': ' + playlist[NAME].strip())
+        Printer.print(PrintChannel.MANDATORY, str(count) + ': ' + playlist[NAME].strip())
         count += 1
     
     selection = ''
-    print('\n> SELECT A PLAYLIST BY ID')
-    print('> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID\'s')
-    print('> OR PARTICULAR OPTIONS BY ADDING A COMMA BETWEEN ID\'s\n')
+    Printer.print(PrintChannel.MANDATORY, search_select())
     while len(selection) == 0:
         selection = str(input('ID(s): '))
     playlist_choices = split_sanitize_input(selection)
