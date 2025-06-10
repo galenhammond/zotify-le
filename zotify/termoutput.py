@@ -1,4 +1,5 @@
-from os import get_terminal_size
+import platform
+from os import get_terminal_size, system
 from itertools import cycle
 from time import sleep
 from threading import Thread
@@ -9,6 +10,7 @@ from tqdm import tqdm
 from zotify.config import *
 from zotify.zotify import Zotify
 
+
 UP_ONE_LINE = "\033[A"
 DOWN_ONE_LINE = "\033[B"
 START_OF_PREV_LINE = "\033[F"
@@ -17,6 +19,7 @@ CLEAR_LINE = "\033[K"
 
 class PrintChannel(Enum):
     MANDATORY = "MANDATORY"
+    DEBUG = DEBUG
     
     SPLASH = PRINT_SPLASH
     
@@ -29,10 +32,6 @@ class PrintChannel(Enum):
     DOWNLOADS = PRINT_DOWNLOADS
 
 
-ERROR_CHANNELS = [PrintChannel.WARNINGS, PrintChannel.ERRORS, PrintChannel.API_ERRORS]
-EVENT_CHANNELS = [PrintChannel.PROGRESS_INFO, PrintChannel.SKIPS, PrintChannel.DOWNLOADS]
-
-
 class Printer:
     @staticmethod
     def print(channel: PrintChannel, msg: str) -> None:
@@ -41,8 +40,12 @@ class Printer:
                 columns, _ = get_terminal_size()
             except OSError:
                 columns = 80
-            for line in msg.splitlines():
+            for line in str(msg).splitlines():
                 tqdm.write(line.ljust(columns))
+    
+    @staticmethod
+    def debug(msg: str) -> None:
+        Printer.print(PrintChannel.DEBUG, msg)
     
     @staticmethod
     def print_loader(channel: PrintChannel, msg: str) -> None:
@@ -50,9 +53,32 @@ class Printer:
             Printer.print(channel, START_OF_PREV_LINE*2 + msg)
     
     @staticmethod
-    def progress(iterable=None, desc=None, total=None, unit='it', disable=False, unit_scale=False, unit_divisor=1000, pos=1):
-        return tqdm(iterable=iterable, desc=desc, total=total, disable=disable, leave=False, position=pos, 
-                    unit=unit, unit_scale=unit_scale, unit_divisor=unit_divisor)
+    def pbar(iterable=None, desc=None, total=None, unit='it', 
+            disable=False, unit_scale=False, unit_divisor=1000, pos=1) -> tqdm:
+        if iterable and len(iterable) == 1: disable = True # minimize clutter
+        new_pbar = tqdm(iterable=iterable, desc=desc, total=total, disable=disable, position=pos, 
+                        unit=unit, unit_scale=unit_scale, unit_divisor=unit_divisor, leave=False)
+        if new_pbar.disable: new_pbar.pos = -pos
+        return new_pbar
+    
+    @staticmethod
+    def refresh_all_pbars(pbar_stack: list[tqdm] | None, skip_pop: bool = False) -> None:
+        for pbar in pbar_stack:
+            pbar.refresh()
+        
+        if not skip_pop and pbar_stack:
+            if pbar_stack[-1].n == pbar_stack[-1].total: pbar_stack.pop()
+    
+    @staticmethod
+    def pbar_position_handler(default_pos: int, pbar_stack: list[tqdm] | None) -> tuple[int, list[tqdm]]:
+        pos = default_pos
+        if pbar_stack is not None:
+            pos = -pbar_stack[-1].pos + (0 if pbar_stack[-1].disable else -2)
+        else:
+            # next bar must be appended to this empty list
+            pbar_stack = []
+        
+        return pos, pbar_stack
     
     @staticmethod
     def json_dump_printer(obj: dict) -> None:
@@ -69,10 +95,35 @@ class Printer:
         Printer.print(PrintChannel.ERRORS, "\n")
         Printer.print(PrintChannel.ERRORS, "".join(TracebackException.from_exception(e).format()))
         Printer.print(PrintChannel.ERRORS, "\n\n")
-
-
-# load symbol from:
-# https://stackoverflow.com/questions/22029562/python-how-to-make-simple-animated-loading-while-process-is-running
+    
+    @staticmethod
+    def splash() -> None:
+        """ Displays splash screen """
+        Printer.print(PrintChannel.SPLASH,
+        "    ███████╗ ██████╗ ████████╗██╗███████╗██╗   ██╗"+"\n"+\
+        "    ╚══███╔╝██╔═══██╗╚══██╔══╝██║██╔════╝╚██╗ ██╔╝"+"\n"+\
+        "      ███╔╝ ██║   ██║   ██║   ██║█████╗   ╚████╔╝ "+"\n"+\
+        "     ███╔╝  ██║   ██║   ██║   ██║██╔══╝    ╚██╔╝  "+"\n"+\
+        "    ███████╗╚██████╔╝   ██║   ██║██║        ██║   "+"\n"+\
+        "    ╚══════╝ ╚═════╝    ╚═╝   ╚═╝╚═╝        ╚═╝   "+"\n\n"
+        )
+    
+    @staticmethod
+    def search_select() -> None:
+        """ Displays splash screen """
+        Printer.print(PrintChannel.MANDATORY,
+        "> SELECT A DOWNLOAD OPTION BY ID\n" +
+        "> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's\n" +
+        "> OR PARTICULAR OPTIONS BY ADDING A COMMA BETWEEN ID's\n"
+        )
+    
+    @staticmethod
+    def clear() -> None:
+        """ Clear the console window """
+        if platform.system() == WINDOWS_SYSTEM:
+            system('cls')
+        else:
+            system('clear')
 
 
 class Loader:
@@ -80,10 +131,14 @@ class Loader:
     
     Can be called inside a context:
     
-    with Loader("This take some Time..."):
+    with Loader("This may take some Time..."):
         # do something
         pass
     """
+    
+    # load symbol from:
+    # https://stackoverflow.com/questions/22029562/python-how-to-make-simple-animated-loading-while-process-is-running
+    
     def __init__(self, chan, desc="Loading...", end='', timeout=0.1, mode='prog'):
         """
         A loader-like context manager

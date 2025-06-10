@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.7.1"
+__version__ = "0.7.5"
 
 from enum import IntEnum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -26,6 +26,8 @@ from librespot.mercury import MercuryClient
 from librespot.proto import Authentication_pb2 as Authentication
 from pkce import generate_code_verifier, get_code_challenge
 from requests import HTTPError, get, post
+from logging import getLogger
+getLogger("Librespot:AudioKeyManager").disabled = True
 
 
 API_URL = "https://api.sp" + "otify.com/v1/"

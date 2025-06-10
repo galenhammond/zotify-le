@@ -1,12 +1,9 @@
-from zotify.const import ITEMS, ID, TRACK, NAME, TYPE
+from zotify.const import USER_PLAYLISTS_URL, PLAYLISTS_URL, ITEMS, ID, TRACK, NAME, TYPE
 from zotify.podcast import download_episode
 from zotify.termoutput import Printer, PrintChannel
 from zotify.track import download_track
-from zotify.utils import search_select, split_sanitize_input, strptime_utc
+from zotify.utils import split_sanitize_input, strptime_utc
 from zotify.zotify import Zotify
-
-MY_PLAYLISTS_URL = 'https://api.sp'+'otify.com/v1/me/playlists'
-PLAYLISTS_URL = 'https://api.sp'+'otify.com/v1/playlists'
 
 
 def get_all_playlists():
@@ -14,14 +11,14 @@ def get_all_playlists():
     playlists = []
     limit = 50
     offset = 0
-
+    
     while True:
-        resp = Zotify.invoke_url_with_params(MY_PLAYLISTS_URL, limit=limit, offset=offset)
+        resp = Zotify.invoke_url_with_params(USER_PLAYLISTS_URL, limit=limit, offset=offset)
         offset += limit
         playlists.extend(resp[ITEMS])
         if len(resp[ITEMS]) < limit:
             break
-
+    
     return playlists
 
 
@@ -51,34 +48,31 @@ def get_playlist_info(playlist_id) -> tuple[str, str]:
     return resp['name'].strip(), resp['owner']['display_name'].strip()
 
 
-def download_playlist(playlist, wrapper_p_bars: list | None = None):
+def download_playlist(playlist, pbar_stack: list | None = None):
     """Downloads all the songs from a playlist"""
     playlist_songs = [song_dict[TRACK] for song_dict in get_playlist_songs(playlist[ID]) if song_dict[TRACK] is not None and song_dict[TRACK][ID]]
     char_num = max({len(str(len(playlist_songs))), 2})
     
-    pos = 3
-    if wrapper_p_bars is not None:
-        pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-    else:
-        wrapper_p_bars = []
-    p_bar = Printer.progress(enumerate(playlist_songs, start=1), unit='songs', total=len(playlist_songs), unit_scale=True,
-                             disable=not Zotify.CONFIG.get_show_playlist_pbar(), pos=pos)
-    wrapper_p_bars.append(p_bar if Zotify.CONFIG.get_show_playlist_pbar() else pos)
+    pos, pbar_stack = Printer.pbar_position_handler(3, pbar_stack)
+    pbar = Printer.pbar(playlist_songs, unit='song', pos=pos,
+                        disable=not Zotify.CONFIG.get_show_playlist_pbar())
+    pbar_stack.append(pbar)
     
-    for n, song in p_bar:
+    for n, song in enumerate(pbar, 1):
         if song[TYPE] == "episode": # Playlist item is a podcast episode
+            pbar.unit = 'episode'
             download_episode(song[ID])
         else:
-            download_track('extplaylist', song[ID], extra_keys=
+            pbar.unit = 'song'
+            download_track('extplaylist', song[ID],
                            {'playlist_song_name': song[NAME],
                             'playlist': playlist[NAME],
                             'playlist_num': str(n).zfill(char_num),
                             'playlist_id': playlist[ID],
                             'playlist_track_id': song[ID]},
-                           wrapper_p_bars=wrapper_p_bars)
-        p_bar.set_description(song[NAME])
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+                           pbar_stack)
+        pbar.set_description(song[NAME])
+        Printer.refresh_all_pbars(pbar_stack)
 
 
 def download_from_user_playlist():
@@ -91,19 +85,18 @@ def download_from_user_playlist():
         count += 1
     
     selection = ''
-    Printer.print(PrintChannel.MANDATORY, search_select())
+    Printer.search_select()
     while len(selection) == 0:
         selection = str(input('ID(s): '))
     playlist_choices = split_sanitize_input(selection)
     
     pos = 5
-    p_bar = Printer.progress(playlist_choices, unit='playlists', total=len(playlist_choices), unit_scale=True, 
-                             disable=not Zotify.CONFIG.get_show_url_pbar(), pos=pos)
-    wrapper_p_bars = [p_bar if Zotify.CONFIG.get_show_url_pbar() else pos]
+    pbar = Printer.pbar(playlist_choices, unit='playlist', pos=pos, 
+                        disable=not Zotify.CONFIG.get_show_url_pbar())
+    pbar_stack = [pbar]
     
-    for playlist_number in p_bar:
+    for playlist_number in pbar:
         playlist = playlists[int(playlist_number) - 1]
-        download_playlist(playlist, wrapper_p_bars)
-        p_bar.set_description(playlist[NAME].strip())
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+        download_playlist(playlist, pbar_stack)
+        pbar.set_description(playlist[NAME].strip())
+        Printer.refresh_all_pbars(pbar_stack)

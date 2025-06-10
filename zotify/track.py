@@ -1,47 +1,20 @@
-from pathlib import Path, PurePath
 import math
 import time
 import uuid
-from typing import Any
-
-from librespot.metadata import TrackId
 import ffmpy
+from typing import Any
+from pathlib import Path, PurePath
+from librespot.metadata import TrackId
 
-from zotify.const import TRACKS, ALBUM, GENRES, NAME, ITEMS, DISC_NUMBER, TRACK_NUMBER, TOTAL_TRACKS, IS_PLAYABLE, ARTISTS, IMAGES, URL, \
-    RELEASE_DATE, ID, TRACKS_URL, FOLLOWED_ARTISTS_URL, SAVED_TRACKS_URL, TRACK_STATS_URL, CODEC_MAP, EXT_MAP, DURATION_MS, \
-    HREF, ARTISTS, WIDTH, COMPILATION, ALBUM_TYPE
+from zotify.const import TRACKS, ALBUM, GENRES, NAME, DISC_NUMBER, TRACK_NUMBER, TOTAL_TRACKS, \
+    IS_PLAYABLE, ARTISTS, IMAGES, URL, RELEASE_DATE, ID, TRACKS_URL, TRACK_STATS_URL, \
+    CODEC_MAP, EXT_MAP, DURATION_MS, HREF, ARTISTS, WIDTH, COMPILATION, ALBUM_TYPE
 from zotify.config import EXPORT_M3U8
 from zotify.termoutput import Printer, PrintChannel, Loader
-from zotify.utils import fix_filename, set_audio_tags, set_music_thumbnail, create_download_directory, add_to_m3u8, fetch_m3u8_songs, \
-    get_directory_song_ids, add_to_directory_song_archive, get_archived_song_ids, add_to_song_archive, fmt_seconds, wait_between_downloads
+from zotify.utils import fix_filename, set_audio_tags, set_music_thumbnail, create_download_directory, \
+    add_to_m3u8, fetch_m3u8_songs, get_directory_song_ids, add_to_directory_song_archive, \
+    get_archived_song_ids, add_to_song_archive, fmt_seconds, wait_between_downloads
 from zotify.zotify import Zotify
-
-
-def get_saved_tracks() -> list:
-    """ Returns user's saved tracks """
-    songs = []
-    offset = 0
-    limit = 50
-
-    while True:
-        resp = Zotify.invoke_url_with_params(
-            SAVED_TRACKS_URL, limit=limit, offset=offset)
-        offset += limit
-        songs.extend(resp[ITEMS])
-        if len(resp[ITEMS]) < limit:
-            break
-
-    return songs
-
-
-def get_followed_artists() -> list:
-    """ Returns user's followed artists """
-    artists = []
-    resp = Zotify.invoke_url(FOLLOWED_ARTISTS_URL)[1]
-    for artist in resp[ARTISTS][ITEMS]:
-        artists.append(artist)
-    
-    return artists
 
 
 def get_song_info(song_id) -> tuple[list[str], list[Any], str, str, Any, Any, Any, Any, Any, Any, Any, Any, Any, int]:
@@ -164,9 +137,9 @@ def handle_lyrics(track_id: str, song_name: str, filedir: PurePath) -> list[str]
     return lyrics
 
 
-def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wrapper_p_bars: list | None = None) -> None:
+def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pbar_stack: list | None = None) -> None:
     """ Downloads raw song audio content stream"""
-    
+    # return
     # recursive header for parent album download
     child_request_mode = mode
     child_request_id = track_id
@@ -186,7 +159,7 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
             if album_id and total_tracks and int(total_tracks) > 1:
                 from zotify.album import download_album
                 # uses album OUTPUT template for filename formatting, but handle m3u8 as if only this track was downloaded
-                return download_album(album_id, wrapper_p_bars, M3U8_bypass=(mode, track_id))
+                return download_album(album_id, pbar_stack, M3U8_bypass=(mode, track_id))
     
     if extra_keys is None:
         extra_keys = {}
@@ -290,6 +263,7 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                         prepare_download_loader.stop()
                         Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO GET CONTENT STREAM   ###')
                         Printer.print(PrintChannel.ERRORS, f'###   Track_ID: {track_id}   ###')
+                        Printer.print(PrintChannel.MANDATORY, "\n")
                         return
                     create_download_directory(filedir)
                     total_size = stream.input_stream.size
@@ -298,12 +272,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                     
                     time_start = time.time()
                     downloaded = 0
-                    pos = 1
-                    if wrapper_p_bars is not None:
-                        pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-                        for bar in wrapper_p_bars:
-                            if type(bar) != int: bar.refresh()
-                    with open(filename_temp, 'wb') as file, Printer.progress(
+                    pos, pbar_stack = Printer.pbar_position_handler(1, pbar_stack)
+                    with open(filename_temp, 'wb') as file, Printer.pbar(
                             desc=song_name,
                             total=total_size,
                             unit='B',
@@ -311,12 +281,12 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, wra
                             unit_divisor=1024,
                             disable=not Zotify.CONFIG.get_show_download_pbar(),
                             pos=pos
-                    ) as p_bar:
+                    ) as pbar:
                         b = 0
                         while b < 5:
                         #for _ in range(int(total_size / Zotify.CONFIG.get_chunk_size()) + 2):
                             data = stream.input_stream.stream().read(Zotify.CONFIG.get_chunk_size())
-                            p_bar.update(file.write(data))
+                            pbar.update(file.write(data))
                             downloaded += len(data)
                             b += 1 if data == b'' else 0
                             if Zotify.CONFIG.get_download_real_time():

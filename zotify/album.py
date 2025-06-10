@@ -1,11 +1,8 @@
-from zotify.const import ITEMS, ARTISTS, NAME, ID, DISC_NUMBER
+from zotify.const import ALBUM_URL, ARTIST_URL, ITEMS, ARTISTS, NAME, ID, DISC_NUMBER
 from zotify.termoutput import Printer
 from zotify.track import download_track
 from zotify.utils import fix_filename
 from zotify.zotify import Zotify
-
-ALBUM_URL = 'https://api.sp'+'otify.com/v1/albums'
-ARTIST_URL = 'https://api.sp'+'otify.com/v1/artists'
 
 
 def get_album_info(album_id):
@@ -41,27 +38,36 @@ def get_artist_albums(artist_id):
     while resp['next'] is not None:
         (raw, resp) = Zotify.invoke_url(resp['next'])
         album_ids.extend([resp[ITEMS][i][ID] for i in range(len(resp[ITEMS]))])
-
+    
     return album_ids
 
 
-def download_album(album, wrapper_p_bars: list | None = None, M3U8_bypass: str | None = None):
+def download_artist_albums(artist, pbar_stack: list | None = None):
+    """ Downloads albums of an artist """
+    albums = get_artist_albums(artist)
+    
+    pos, pbar_stack = Printer.pbar_position_handler(5, pbar_stack)
+    pbar = Printer.pbar(albums, unit='album', pos=pos,
+                        disable=not Zotify.CONFIG.get_show_artist_pbar())
+    pbar_stack.append(pbar)
+    
+    for album_id in pbar:
+        download_album(album_id, pbar_stack)
+        pbar.set_description(get_album_info(album_id)[0])
+        Printer.refresh_all_pbars(pbar_stack)
+
+
+def download_album(album, pbar_stack: list | None = None, M3U8_bypass: str | None = None):
     """ Downloads songs from an album """
     album_name, album_artist, tracks, total_discs = get_album_info(album)
     char_num = max({len(str(len(tracks))), 2})
     
-    pos = 3
-    if wrapper_p_bars is not None:
-        pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
-    else:
-        wrapper_p_bars = []
-    p_bar = Printer.progress(enumerate(tracks, start=1), unit_scale=True, unit='songs', total=len(tracks), 
-                             disable=not Zotify.CONFIG.get_show_album_pbar(), pos=pos)        
-    wrapper_p_bars.append(p_bar if Zotify.CONFIG.get_show_album_pbar() else pos)
+    pos, pbar_stack = Printer.pbar_position_handler(3, pbar_stack)
+    pbar = Printer.pbar(tracks, unit='song', pos=pos, 
+                        disable=not Zotify.CONFIG.get_show_album_pbar())
+    pbar_stack.append(pbar)
     
-    for n, track in p_bar:
+    for n, track in enumerate(pbar, 1):
         
         extra_keys={'album_num': str(n).zfill(char_num), 
                     'album_artist': album_artist, 
@@ -73,30 +79,7 @@ def download_album(album, wrapper_p_bars: list | None = None, M3U8_bypass: str |
             extra_keys['M3U8_bypass'] = M3U8_bypass
         
         download_track('album', track[ID], 
-                       extra_keys=extra_keys,
-                       wrapper_p_bars=wrapper_p_bars)
-        p_bar.set_description(track[NAME])
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
-
-
-def download_artist_albums(artist, wrapper_p_bars: list | None = None):
-    """ Downloads albums of an artist """
-    albums = get_artist_albums(artist)
-    
-    pos = 5
-    if wrapper_p_bars is not None:
-        pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
-    else:
-        wrapper_p_bars = []
-    p_bar = Printer.progress(albums, unit_scale=True, unit='albums', total=len(albums), 
-                             disable=not Zotify.CONFIG.get_show_artist_pbar(), pos=pos)        
-    wrapper_p_bars.append(p_bar if Zotify.CONFIG.get_show_artist_pbar() else pos)
-    
-    for album_id in p_bar:
-        download_album(album_id, wrapper_p_bars)
-        p_bar.set_description(get_album_info(album_id)[0])
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+                       extra_keys,
+                       pbar_stack)
+        pbar.set_description(track[NAME])
+        Printer.refresh_all_pbars(pbar_stack)

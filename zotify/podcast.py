@@ -1,18 +1,11 @@
-from pathlib import PurePath, Path
 import time
-
+from pathlib import PurePath, Path
 from librespot.metadata import EpisodeId
 
-from zotify.const import ERROR, ID, ITEMS, NAME, SHOW, DURATION_MS
+from zotify.const import EPISODE_INFO_URL, SHOWS_URL, PARTNER_URL, PERSISTED_QUERY, ERROR, ID, ITEMS, NAME, SHOW, DURATION_MS
 from zotify.termoutput import PrintChannel, Printer, Loader
 from zotify.utils import create_download_directory, fix_filename, fmt_seconds, wait_between_downloads
 from zotify.zotify import Zotify
-
-
-EPISODE_INFO_URL = 'https://api.sp'+'otify.com/v1/episodes'
-SHOWS_URL = 'https://api.sp'+'otify.com/v1/shows'
-PARTNER_URL = 'https://api-partner.sp'+'otify.com/pathfinder/v1/query?operationName=getEpisode&variables={"uri":"sp'+'otify:episode:'
-PERSISTED_QUERY = '{"persistedQuery":{"version":1,"sha256Hash":"224ba0fd89fcfdfb3a15fa2d82a6112d3f4e2ac88fba5c6713de04d1b72cf482"}}'
 
 
 def get_episode_info(episode_id_str) -> tuple[str | None, str | None, str | None]:
@@ -70,26 +63,21 @@ def download_podcast_directly(url, filename):
     return path
 
 
-def download_show(show_id, wrapper_p_bars: list | None = None):
+def download_show(show_id, pbar_stack: list | None = None):
     episodes = get_show_episodes(show_id)
     
-    pos = 3
-    if wrapper_p_bars is not None:
-        pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-    else:
-        wrapper_p_bars = []
-    p_bar = Printer.progress(episodes, unit='episodes', total=len(episodes), unit_scale=True,
-                             disable=not Zotify.CONFIG.get_show_playlist_pbar(), pos=pos)
-    wrapper_p_bars.append(p_bar if Zotify.CONFIG.get_show_playlist_pbar() else pos)
+    pos, pbar_stack = Printer.pbar_position_handler(3, pbar_stack)
+    pbar = Printer.pbar(episodes, unit='episode', pos=pos,
+                        disable=not Zotify.CONFIG.get_show_playlist_pbar())
+    pbar_stack.append(pbar)
     
-    for episode in p_bar:
-        download_episode(episode, wrapper_p_bars)
-        p_bar.set_description(get_episode_info(episode)[2])
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+    for episode in pbar:
+        download_episode(episode, pbar_stack)
+        pbar.set_description(get_episode_info(episode)[2])
+        Printer.refresh_all_pbars(pbar_stack)
 
 
-def download_episode(episode_id, wrapper_p_bars: list | None = None) -> None:
+def download_episode(episode_id, pbar_stack: list | None = None) -> None:
     podcast_name, duration_ms, episode_name = get_episode_info(episode_id)
     
     Printer.print(PrintChannel.MANDATORY, "\n")
@@ -133,12 +121,8 @@ def download_episode(episode_id, wrapper_p_bars: list | None = None) -> None:
                 prepare_download_loader.stop()
                 time_start = time.time()
                 downloaded = 0
-                pos = 1
-                if wrapper_p_bars is not None:
-                    pos = wrapper_p_bars[-1] if type(wrapper_p_bars[-1]) is int else -(wrapper_p_bars[-1].pos + 2)
-                    for bar in wrapper_p_bars:
-                        if type(bar) != int: bar.refresh()
-                with open(filepath, 'wb') as file, Printer.progress(
+                pos, pbar_stack = Printer.pbar_position_handler(1, pbar_stack)
+                with open(filepath, 'wb') as file, Printer.pbar(
                     desc=filename,
                     total=total_size,
                     unit='B',
@@ -146,12 +130,12 @@ def download_episode(episode_id, wrapper_p_bars: list | None = None) -> None:
                     unit_divisor=1024,
                     disable=not Zotify.CONFIG.get_show_download_pbar(),
                     pos=pos
-                ) as p_bar:
+                ) as pbar:
                     prepare_download_loader.stop()
                     while True:
                     #for _ in range(int(total_size / Zotify.CONFIG.get_chunk_size()) + 2):
                         data = stream.input_stream.stream().read(Zotify.CONFIG.get_chunk_size())
-                        p_bar.update(file.write(data))
+                        pbar.update(file.write(data))
                         downloaded += len(data)
                         if data == b'':
                             break

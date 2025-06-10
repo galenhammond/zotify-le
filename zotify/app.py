@@ -5,146 +5,76 @@ from pathlib import Path
 
 from zotify.album import download_album, download_artist_albums
 from zotify.const import TRACK, NAME, ID, ARTIST, ARTISTS, ITEMS, TRACKS, EXPLICIT, ALBUM, ALBUMS, \
-    OWNER, PLAYLIST, PLAYLISTS, DISPLAY_NAME
+    OWNER, PLAYLIST, PLAYLISTS, DISPLAY_NAME, USER_FOLLOWED_ARTISTS_URL, USER_SAVED_TRACKS_URL, SEARCH_URL
 from zotify.playlist import get_playlist_info, download_from_user_playlist, download_playlist
 from zotify.podcast import download_episode, download_show
 from zotify.termoutput import Printer, PrintChannel
-from zotify.track import download_track, get_saved_tracks, get_followed_artists
-from zotify.utils import splash, search_select, split_sanitize_input, regex_input_for_urls
+from zotify.track import download_track
+from zotify.utils import split_sanitize_input, regex_input_for_urls
 from zotify.zotify import Zotify
 
-SEARCH_URL = 'https://api.sp'+'otify.com/v1/search'
 
-
-def client(args: Namespace) -> None:
-    """ Connects to download server to perform query's and get songs to download """
-    Zotify(args)
-    
-    Printer.print(PrintChannel.SPLASH, splash())
-    
-    quality_options = {
-        'auto': AudioQuality.VERY_HIGH if Zotify.check_premium() else AudioQuality.HIGH,
-        'normal': AudioQuality.NORMAL,
-        'high': AudioQuality.HIGH,
-        'very_high': AudioQuality.VERY_HIGH
-    }
-    Zotify.DOWNLOAD_QUALITY = quality_options[Zotify.CONFIG.get_download_quality()]
-    
-    if args.file_of_urls:
-        urls = []
-        filename = args.file_of_urls
-        if Path(filename).exists():
-            with open(filename, 'r', encoding='utf-8') as file:
-                urls.extend([line.strip() for line in file.readlines()])
-            
-            download_from_urls(urls)
-        
-        else:
-            Printer.print(PrintChannel.ERRORS, f'###   ERROR:  FILE {filename} NOT FOUND   ###')
-        return
-    
-    elif args.urls:
-        if len(args.urls) > 0:
-            if len(args.urls) == 1 and " " in args.urls[0]:
-                args.urls = args.urls[0].split(' ')
-            # Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADING URLS: {args.urls}')
-            download_from_urls(args.urls)
-        return
-    
-    elif args.playlist:
-        download_from_user_playlist()
-        return
-    
-    elif args.liked_songs:
-        liked_songs = get_saved_tracks()
-        
-        pos = 3
-        p_bar = Printer.progress(liked_songs, unit='songs', total=len(liked_songs), unit_scale=True, 
-                                 disable=not Zotify.CONFIG.get_show_playlist_pbar(), pos=pos)
-        wrapper_p_bars = [p_bar if Zotify.CONFIG.get_show_playlist_pbar() else pos]
-        
-        for song in p_bar:
-            if not song[TRACK][NAME] or not song[TRACK][ID]:
-                Printer.print(PrintChannel.SKIPS, '###   SKIPPING:  SONG NO LONGER EXISTS   ###')
-                Printer.print(PrintChannel.SKIPS, f'###   Track_Name: {song[TRACK][NAME]} - Track_Name: {song[TRACK][ID]}   ###')
-            else:
-                download_track('liked', song[TRACK][ID], wrapper_p_bars=wrapper_p_bars)
-                p_bar.set_description(song[TRACK][NAME])
-            for bar in wrapper_p_bars:
-                if type(bar) != int: bar.refresh()
-        return
-    
-    elif args.followed_artists:
-        artists = get_followed_artists()
-        pos = 7
-        p_bar = Printer.progress(artists, unit='artists', total=len(artists), unit_scale=True, 
-                                 disable=not Zotify.CONFIG.get_show_url_pbar(), pos=pos)
-        wrapper_p_bars = [p_bar if Zotify.CONFIG.get_show_url_pbar() else pos]
-        
-        for artist in p_bar:
-            download_artist_albums(artist[ID], wrapper_p_bars)
-            p_bar.set_description(artist[NAME])
-            for bar in wrapper_p_bars:
-                if type(bar) != int: bar.refresh()
-        return
-    
-    elif args.search:
-        if args.search == ' ':
-            search_text = ''
-            while len(search_text) == 0:
-                search_text = input('Enter search: ')
-            search(search_text)
-        else:
-            # this seems unnecessay, but the original code had this check so it gets to live another day
-            if regex_input_for_urls(args.search, non_global=True) != (None, None, None, None, None, None):
-                Printer.print(PrintChannel.WARNINGS, "###   WARNING:  URL DETECTED IN SEARCH, TREATING SEARCH AS URL REQUEST   ###")
-                download_from_urls([args.search])
-            else:
-                search(args.search)
-        return
-    
-    else:
-        search_text = ''
-        while len(search_text) == 0:
-            search_text = input('Enter search: ')
-        search(search_text)
-        return
-
-
-def download_from_urls(urls: list[str]) -> bool:
+def download_from_urls(urls: list[str]) -> int:
     """ Downloads from a list of urls """
-    download = False
+    download = 0
     
     pos = 7
-    p_bar = Printer.progress(urls, unit='urls', total=len(urls), unit_scale=True, disable=not Zotify.CONFIG.get_show_url_pbar(), pos=pos)
-    wrapper_p_bars = [p_bar if Zotify.CONFIG.get_show_url_pbar() else pos]
-    for url in p_bar:
-        track_id, album_id, playlist_id, episode_id, show_id, artist_id = regex_input_for_urls(url)
+    pbar = Printer.pbar(urls, unit='url', pos=pos, 
+                        disable=not Zotify.CONFIG.get_show_url_pbar())
+    pbar_stack = [pbar]
+    
+    for url in pbar:
+        result = regex_input_for_urls(url)
+        if all({res is None for res in result}):
+            continue
         
+        track_id, album_id, playlist_id, episode_id, show_id, artist_id = result
         if track_id is not None:
-            download = True
-            download_track('single', track_id, wrapper_p_bars=wrapper_p_bars)
-        elif artist_id is not None:
-            download = True
-            download_artist_albums(artist_id, wrapper_p_bars)
+            download_track('single', track_id, None, pbar_stack)
         elif album_id is not None:
-            download = True
-            download_album(album_id, wrapper_p_bars)
+            download_album(album_id, pbar_stack)
         elif playlist_id is not None:
-            download = True
             download_playlist({ID: playlist_id,
                                NAME: get_playlist_info(playlist_id)[0]},
-                               wrapper_p_bars)
+                               pbar_stack)
         elif episode_id is not None:
-            download = True
-            download_episode(episode_id, wrapper_p_bars)
+            download_episode(episode_id, pbar_stack)
         elif show_id is not None:
-            download = True
-            download_show(show_id, wrapper_p_bars)
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+            download_show(show_id, pbar_stack)
+        elif artist_id is not None:
+            download_artist_albums(artist_id, pbar_stack)
+        
+        download += 1 
+        Printer.refresh_all_pbars(pbar_stack)
     
     return download
+
+
+def get_saved_tracks() -> list:
+    """ Returns user's saved tracks """
+    songs = []
+    offset = 0
+    limit = 50
+    
+    while True:
+        resp = Zotify.invoke_url_with_params(
+            USER_SAVED_TRACKS_URL, limit=limit, offset=offset)
+        offset += limit
+        songs.extend(resp[ITEMS])
+        if len(resp[ITEMS]) < limit:
+            break
+    
+    return songs
+
+
+def get_followed_artists() -> list:
+    """ Returns user's followed artists """
+    artists = []
+    resp = Zotify.invoke_url(USER_FOLLOWED_ARTISTS_URL)[1]
+    for artist in resp[ARTISTS][ITEMS]:
+        artists.append(artist)
+    
+    return artists
 
 
 def search(search_term) -> None:
@@ -158,12 +88,12 @@ def search(search_term) -> None:
     splits = search_term.split()
     for split in splits:
         index = splits.index(split)
-
+        
         if split[0] == '-' and len(split) > 1:
             if len(splits)-1 == index:
                 raise IndexError('No parameters passed after option: {}\n'.
                                  format(split))
-
+        
         if split == '-l' or split == '-limit':
             try:
                 int(splits[index+1])
@@ -173,7 +103,7 @@ def search(search_term) -> None:
             if int(splits[index+1]) > 50:
                 raise ValueError('Invalid limit passed. Max is 50.\n')
             params['limit'] = splits[index+1]
-
+        
         if split == '-t' or split == '-type':
 
             allowed_types = ['track', 'playlist', 'album', 'artist']
@@ -301,7 +231,7 @@ def search(search_term) -> None:
         Printer.print(PrintChannel.MANDATORY, '###   NO RESULTS FOUND - EXITING...   ###')
         return
     
-    Printer.print(PrintChannel.MANDATORY, search_select())
+    Printer.search_select()
     raw_input = ''
     while len(raw_input) == 0:
         raw_input = str(input('ID(s): '))
@@ -309,20 +239,114 @@ def search(search_term) -> None:
     choices = split_sanitize_input(raw_input)
     
     pos = 7
-    p_bar = Printer.progress(choices, unit='choices', total=len(choices), unit_scale=True, 
-                                disable=not Zotify.CONFIG.get_show_url_pbar(), pos=pos)
-    wrapper_p_bars = [p_bar if Zotify.CONFIG.get_show_url_pbar() else pos]
+    pbar = Printer.pbar(choices, unit='choice', pos=pos, 
+                        disable=not Zotify.CONFIG.get_show_url_pbar())
+    pbar_stack = [pbar]
     
-    for choice in p_bar:
-        if choice <= len(search_results):
-            selection = search_results[choice - 1]
-            if selection['type'] == TRACK:
-                download_track('single', selection[ID], wrapper_p_bars=wrapper_p_bars)
-            elif selection['type'] == ALBUM:
-                download_album(selection[ID], wrapper_p_bars)
-            elif selection['type'] == ARTIST:
-                download_artist_albums(selection[ID], wrapper_p_bars)
+    for choice in pbar:
+        if choice > len(search_results):
+            continue
+        
+        selection = search_results[choice - 1]
+        if selection['type'] == TRACK:
+            download_track('single', selection[ID], None, pbar_stack)
+        elif selection['type'] == ALBUM:
+            download_album(selection[ID], pbar_stack)
+        elif selection['type'] == ARTIST:
+            download_artist_albums(selection[ID], pbar_stack)
+        else:
+            download_playlist(selection, pbar_stack)
+        Printer.refresh_all_pbars(pbar_stack)
+
+
+def client(args: Namespace) -> None:
+    """ Connects to download server to perform query's and get songs to download """
+    Zotify(args)
+    
+    Printer.splash()
+    
+    quality_options = {
+        'auto': AudioQuality.VERY_HIGH if Zotify.check_premium() else AudioQuality.HIGH,
+        'normal': AudioQuality.NORMAL,
+        'high': AudioQuality.HIGH,
+        'very_high': AudioQuality.VERY_HIGH
+    }
+    Zotify.DOWNLOAD_QUALITY = quality_options[Zotify.CONFIG.get_download_quality()]
+    
+    if args.file_of_urls:
+        urls = []
+        filename = args.file_of_urls
+        if Path(filename).exists():
+            with open(filename, 'r', encoding='utf-8') as file:
+                urls.extend([line.strip() for line in file.readlines()])
+            
+            download_from_urls(urls)
+        
+        else:
+            Printer.print(PrintChannel.ERRORS, f'###   ERROR:  FILE {filename} NOT FOUND   ###')
+        return
+    
+    elif args.urls:
+        if len(args.urls) > 0:
+            if len(args.urls) == 1 and " " in args.urls[0]:
+                args.urls = args.urls[0].split(' ')
+            # Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADING URLS: {args.urls}')
+            download_from_urls(args.urls)
+        return
+    
+    elif args.playlist:
+        download_from_user_playlist()
+        return
+    
+    elif args.liked_songs:
+        liked_songs = get_saved_tracks()
+        
+        pos = 3
+        pbar = Printer.pbar(liked_songs, unit='song', pos=pos, 
+                            disable=not Zotify.CONFIG.get_show_playlist_pbar())
+        pbar_stack = [pbar]
+        
+        for song in pbar:
+            if not song[TRACK][NAME] or not song[TRACK][ID]:
+                Printer.print(PrintChannel.SKIPS, '###   SKIPPING:  SONG NO LONGER EXISTS   ###')
+                Printer.print(PrintChannel.SKIPS, f'###   Track_Name: {song[TRACK][NAME]} - Track_Name: {song[TRACK][ID]}   ###')
             else:
-                download_playlist(selection, wrapper_p_bars)
-        for bar in wrapper_p_bars:
-            if type(bar) != int: bar.refresh()
+                download_track('liked', song[TRACK][ID], None, pbar_stack)
+                pbar.set_description(song[TRACK][NAME])
+                Printer.refresh_all_pbars(pbar_stack)
+        return
+    
+    elif args.followed_artists:
+        artists = get_followed_artists()
+        pos = 7
+        pbar = Printer.pbar(artists, unit='artist', pos=pos, 
+                            disable=not Zotify.CONFIG.get_show_url_pbar())
+        pbar_stack = [pbar]
+        
+        for artist in pbar:
+            download_artist_albums(artist[ID], pbar_stack)
+            pbar.set_description(artist[NAME])
+            Printer.refresh_all_pbars(pbar_stack)
+        return
+    
+    elif args.search:
+        if args.search == ' ':
+            search_text = ''
+            while len(search_text) == 0:
+                search_text = input('Enter search: ')
+            search(search_text)
+        else:
+            # this seems unnecessay, but the original code had this check so it gets to live another day
+            if regex_input_for_urls(args.search, non_global=True) != (None, None, None, None, None, None):
+                Printer.print(PrintChannel.WARNINGS, "###   WARNING:  URL DETECTED IN SEARCH, TREATING SEARCH AS URL REQUEST   ###")
+                download_from_urls([args.search])
+            else:
+                search(args.search)
+        return
+    
+    else:
+        search_text = ''
+        while len(search_text) == 0:
+            search_text = input('Enter search: ')
+        search(search_text)
+        return

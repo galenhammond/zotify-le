@@ -60,7 +60,7 @@ class Zotify:
                 gid, fileid = e.args[0].split('! ')[1].split(', ')
                 Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FETCH AUDIO KEY   ###')
                 Printer.print(PrintChannel.ERRORS, '###   MAY BE CAUSED BY RATE LIMITS - CONSIDER INCREASING `BULK_WAIT_TIME`   ###')
-                Printer.print(PrintChannel.ERRORS, f'###   GID: {gid[5:]} - File_ID: {fileid[8:]}   ###\n\n')
+                Printer.print(PrintChannel.ERRORS, f'###   GID: {gid[5:]} - File_ID: {fileid[8:]}   ###')
             else:
                 raise e
     

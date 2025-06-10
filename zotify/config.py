@@ -5,6 +5,7 @@ from typing import Any
 
 from zotify.const import *
 
+
 CONFIG_VALUES = {
     ROOT_PATH:                  { 'default': '~/Music/Zotify Music',    'type': str,    'arg': ('-rp', '--root-path'                     ,) },
     SAVE_CREDENTIALS:           { 'default': 'True',                    'type': bool,   'arg': ('--save-credentials'                     ,) },
@@ -103,11 +104,11 @@ class Config:
             with open(true_config_file_path, 'w', encoding='utf-8') as config_file:
                 json.dump(cls.get_default_json(), config_file, indent=4)
         with open(true_config_file_path, encoding='utf-8') as config_file:
-            jsonvalues = json.load(config_file)
+            jsonvalues: dict[str, dict[str, Any]] = json.load(config_file)
             cls.Values = {}
-            for key in CONFIG_VALUES:
-                if key in jsonvalues:
-                    cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key])
+            for key in jsonvalues:
+                if key in CONFIG_VALUES or key == DEBUG:
+                    cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key]) if key != DEBUG else jsonvalues[key]
         
         # Add default values for missing keys
         for key in CONFIG_VALUES:
@@ -133,7 +134,7 @@ class Config:
     
     @classmethod
     def parse_arg_value(cls, key: str, value: Any) -> Any:
-        if type(value) == CONFIG_VALUES[key]['type']:
+        if isinstance(value, CONFIG_VALUES[key]['type']):
             return value
         if CONFIG_VALUES[key]['type'] == str:
             return str(value)

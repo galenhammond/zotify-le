@@ -1,17 +1,15 @@
 import datetime
 import math
 import os
-import platform
 import re
 import subprocess
+import music_tag
+import requests
 from time import sleep
 from pathlib import Path, PurePath
 
-import music_tag
-import requests
-
-from zotify.const import ALBUMARTIST, ARTIST, TRACKTITLE, ALBUM, YEAR, DISCNUMBER, TRACKNUMBER, ARTWORK, \
-    WINDOWS_SYSTEM, TOTALTRACKS, TOTALDISCS, EXT_MAP, LYRICS, COMPILATION, GENRE
+from zotify.const import ALBUMARTIST, ARTIST, TRACKTITLE, ALBUM, YEAR, DISCNUMBER, \
+    TRACKNUMBER, ARTWORK, TOTALTRACKS, TOTALDISCS, EXT_MAP, LYRICS, COMPILATION, GENRE
 from zotify.zotify import Zotify
 from zotify.termoutput import PrintChannel, Printer
 
@@ -119,34 +117,6 @@ def split_sanitize_input(raw_input: str) -> list[int]:
     return inputs
 
 
-def splash() -> str:
-    """ Displays splash screen """
-    return "" + \
-    "    ███████╗ ██████╗ ████████╗██╗███████╗██╗   ██╗"+"\n"+\
-    "    ╚══███╔╝██╔═══██╗╚══██╔══╝██║██╔════╝╚██╗ ██╔╝"+"\n"+\
-    "      ███╔╝ ██║   ██║   ██║   ██║█████╗   ╚████╔╝ "+"\n"+\
-    "     ███╔╝  ██║   ██║   ██║   ██║██╔══╝    ╚██╔╝  "+"\n"+\
-    "    ███████╗╚██████╔╝   ██║   ██║██║        ██║   "+"\n"+\
-    "    ╚══════╝ ╚═════╝    ╚═╝   ╚═╝╚═╝        ╚═╝   "+"\n\n"
-
-
-def search_select() -> str:
-    """ Displays search select screen """
-    return (
-    "> SELECT A DOWNLOAD OPTION BY ID\n" +
-    "> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's\n" +
-    "> OR PARTICULAR OPTIONS BY ADDING A COMMA BETWEEN ID's\n"
-    )
-
-
-def clear() -> None:
-    """ Clear the console window """
-    if platform.system() == WINDOWS_SYSTEM:
-        os.system('cls')
-    else:
-        os.system('clear')
-
-
 def add_to_m3u8(liked_m3u8: bool, song_duration: float, song_name: str, song_path: PurePath) -> str | None:
     """ Adds song to a .m3u8 playlist, returning the song label in m3u8 format"""
     
@@ -193,6 +163,25 @@ def fetch_m3u8_songs(m3u_path: PurePath) -> list[str] | None:
     return linesraw
 
 
+def conv_artist_format(artists: list[str]) -> list[str] | str:
+    """ Returns converted artist format """
+    if Zotify.CONFIG.get_artist_delimiter() == "":
+        return artists
+    else:
+        return Zotify.CONFIG.get_artist_delimiter().join(artists)
+
+
+def conv_genre_format(genres: list[str]) -> list[str] | str:
+    """ Returns converted genre format """
+    if not Zotify.CONFIG.get_all_genres():
+        return genres[0]
+
+    if Zotify.CONFIG.get_genre_delimiter() == "":
+        return genres
+    else:
+        return Zotify.CONFIG.get_genre_delimiter().join(genres)
+
+
 def set_audio_tags(filename, artists: list[str], genres: list[str], name, album_name, album_artist, release_year, disc_number, track_number, total_tracks, total_discs, compilation: int, lyrics: list[str] | None) -> None:
     """ sets music_tag metadata """
     tags = music_tag.load_file(filename)
@@ -226,31 +215,14 @@ def set_audio_tags(filename, artists: list[str], genres: list[str], name, album_
     tags.save()
 
 
-def conv_artist_format(artists: list[str]) -> list[str] | str:
-    """ Returns converted artist format """
-    if Zotify.CONFIG.get_artist_delimiter() == "":
-        return artists
-    else:
-        return Zotify.CONFIG.get_artist_delimiter().join(artists)
-
-
-def conv_genre_format(genres: list[str]) -> list[str] | str:
-    """ Returns converted genre format """
-    if not Zotify.CONFIG.get_all_genres():
-        return genres[0]
-
-    if Zotify.CONFIG.get_genre_delimiter() == "":
-        return genres
-    else:
-        return Zotify.CONFIG.get_genre_delimiter().join(genres)
-
-
-def set_music_thumbnail(filename: PurePath, image_url, mode: str) -> None:
+def set_music_thumbnail(filename: PurePath, image_url: str, mode: str) -> None:
     """ Fetch an album cover image, set album cover tag, and save to file if desired """
     
     # jpeg format expected from request
     img = requests.get(image_url).content
-    set_music_thumbnail_tag(filename, img)
+    tags = music_tag.load_file(filename)
+    tags[ARTWORK] = img
+    tags.save()
     
     if not Zotify.CONFIG.get_album_art_jpg_file():
         return
@@ -263,29 +235,21 @@ def set_music_thumbnail(filename: PurePath, image_url, mode: str) -> None:
             jpg_file.write(img)
 
 
-def set_music_thumbnail_tag(filename, img: bytes) -> None:
-    """ Sets an image as a music file's cover artwork """
-    
-    tags = music_tag.load_file(filename)
-    tags[ARTWORK] = img
-    tags.save()
-
-
 def regex_input_for_urls(search_input: str, non_global: bool = False) -> tuple[
     str | None, str | None, str | None, str | None, str | None, str | None]:
     """ Since many kinds of search may be passed at the command line, process them all here. """
     
     link_types = ("track", "album", "playlist", "episode", "show", "artist")
-    base_uri_shell = r'^sp'+r'otify:%s:([0-9a-zA-Z]{22})$'
-    base_url_shell = r'^(?:https?://)?open\.sp'+r'otify\.com(?:/intl-\w+)?/%s/([0-9a-zA-Z]{22})(?:\?si=.+?)?$'
+    base_uri = r'^sp'+r'otify:%s:([0-9a-zA-Z]{22})$'
+    base_url = r'^(?:https?://)?open\.sp'+r'otify\.com(?:/intl-\w+)?/%s/([0-9a-zA-Z]{22})(?:\?si=.+?)?$'
     if non_global:
-        base_uri_shell = base_uri_shell[1:-1]
-        base_url_shell = base_url_shell[1:-1]
+        base_uri = base_uri[1:-1]
+        base_url = base_url[1:-1]
     
     result = [None, None, None, None, None, None]
     for i, req_type in enumerate(link_types):
-        uri_res = re.search(base_uri_shell % req_type, search_input)
-        url_res = re.search(base_url_shell % req_type, search_input)
+        uri_res = re.search(base_uri % req_type, search_input)
+        url_res = re.search(base_url % req_type, search_input)
         
         if uri_res is not None or url_res is not None:
             result[i] = uri_res.group(1) if uri_res else url_res.group(1)
