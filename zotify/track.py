@@ -24,6 +24,7 @@ def get_song_info(song_id) -> tuple[list[str], list[Any], str, str, Any, Any, An
     
     if not TRACKS in info:
         raise ValueError(f'Invalid response from TRACKS_URL:\n{raw}')
+        
     
     try:
         artists = []
@@ -58,21 +59,21 @@ def get_song_info(song_id) -> tuple[list[str], list[Any], str, str, Any, Any, An
 def get_song_genres(rawartists: list[str], track_name: str) -> list[str]:
     if Zotify.CONFIG.get_save_genres():
         try:
-            genres = []
-            for data in rawartists:
-                # query artist genres via href, which will be the api url
-                with Loader(PrintChannel.PROGRESS_INFO, "Fetching artist information..."):
+            with Loader(PrintChannel.PROGRESS_INFO, "Fetching artist information..."):
+                genres = []
+                for data in rawartists:
+                    # query artist genres via href, which will be the api url
                     (raw, artistInfo) = Zotify.invoke_url(f'{data[HREF]}')
-                if Zotify.CONFIG.get_all_genres() and len(artistInfo[GENRES]) > 0:
-                    for genre in artistInfo[GENRES]:
-                        genres.append(genre)
-                elif len(artistInfo[GENRES]) > 0:
-                    genres.append(artistInfo[GENRES][0])
-            
-            if len(genres) == 0:
-                Printer.print(PrintChannel.WARNINGS, "###   WARNING:  NO GENRES FOUND   ###")
-                Printer.print(PrintChannel.WARNINGS, f"###   Track_Name: {track_name}   ###")
-                genres.append('')
+                    if Zotify.CONFIG.get_all_genres() and len(artistInfo[GENRES]) > 0:
+                        for genre in artistInfo[GENRES]:
+                            genres.append(genre)
+                    elif len(artistInfo[GENRES]) > 0:
+                        genres.append(artistInfo[GENRES][0])
+                
+                if len(genres) == 0:
+                    Printer.print(PrintChannel.WARNINGS, "###   WARNING:  NO GENRES FOUND   ###\n" +\
+                                                        f"###   Track_Name: {track_name}   ###")
+                    genres.append('')
             
             return genres
         except Exception as e:
@@ -139,7 +140,7 @@ def handle_lyrics(track_id: str, song_name: str, filedir: PurePath) -> list[str]
 
 def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pbar_stack: list | None = None) -> None:
     """ Downloads raw song audio content stream"""
-    # return
+    
     # recursive header for parent album download
     child_request_mode = mode
     child_request_id = track_id
@@ -153,8 +154,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                 album_id = info[TRACKS][0][ALBUM][ID]
                 total_tracks = info[TRACKS][0][ALBUM][TOTAL_TRACKS]
             except:
-                Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FIND PARENT ALBUM   ###')
-                Printer.print(PrintChannel.ERRORS, f'###   Track_ID: {track_id}   ###')
+                Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FIND PARENT ALBUM   ###\n' +\
+                                                  f'###   Track_ID: {track_id}   ###')
             
             if album_id and total_tracks and int(total_tracks) > 1:
                 from zotify.album import download_album
@@ -210,6 +211,10 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
             check_local = not Zotify.CONFIG.get_skip_existing() or not Zotify.CONFIG.get_skip_previously_downloaded()
             # avoids overwrite case only when both "safety switches" are on
         check_all_time = scraped_song_id in get_archived_song_ids()
+        Printer.debug("Duplicate Check\n" +\
+                     f"File Already Exists: {check_name}\n" +\
+                     f"song_id in Local Archive: {check_local}\n" +\
+                     f"song_id in Global Archive: {check_all_time}")
         
         # same filename, not same song_id, rename the newcomer
         if not check_local and check_name:
@@ -235,8 +240,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
     except Exception as e:
         if "prepare_download_loader" in locals():
             prepare_download_loader.stop()
-        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO QUERY METADATA   ###')
-        Printer.print(PrintChannel.ERRORS, f'###   Track_ID: {track_id}   ###')
+        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO QUERY METADATA   ###\n' +\
+                                          f'###   Track_ID: {track_id}   ###')
         Printer.json_dump_printer(extra_keys)
         Printer.traceback_printer(e)
     
@@ -261,8 +266,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                     stream = Zotify.get_content_stream(track, Zotify.DOWNLOAD_QUALITY)
                     if stream is None:
                         prepare_download_loader.stop()
-                        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO GET CONTENT STREAM   ###')
-                        Printer.print(PrintChannel.ERRORS, f'###   Track_ID: {track_id}   ###')
+                        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO GET CONTENT STREAM   ###\n' +\
+                                                          f'###   Track_ID: {track_id}   ###')
                         Printer.print(PrintChannel.MANDATORY, "\n")
                         return
                     create_download_directory(filedir)
@@ -309,10 +314,9 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                                        disc_number, track_number, total_tracks, total_discs, compilation, lyrics)
                         set_music_thumbnail(filename_temp, image_url, mode)
                     except Exception as e:
-                        Printer.print(PrintChannel.ERRORS, "###   ERROR:  FAILED TO WRITE METADATA   ###")
-                        Printer.print(PrintChannel.ERRORS, "###   Ensure FFMPEG is installed and added to your PATH   ###")
+                        Printer.print(PrintChannel.ERRORS, "###   ERROR:  FAILED TO WRITE METADATA   ###\n" +\
+                                                           "###   Ensure FFMPEG is installed and added to your PATH   ###")
                         Printer.traceback_printer(e)
-                        
                     
                     if filename_temp != filename:
                         if Path(filename).exists():
@@ -323,8 +327,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                     time_elapsed_dl = fmt_seconds(time_dl_end - time_start)
                     time_elapsed_ffmpeg = fmt_seconds(time_ffmpeg_end - time_dl_end)
                     
-                    Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADED: "{Path(filename).relative_to(Zotify.CONFIG.get_root_path())}"   ###')
-                    Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOAD TOOK {time_elapsed_dl} (PLUS {time_elapsed_ffmpeg} CONVERTING)   ###')
+                    Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADED: "{Path(filename).relative_to(Zotify.CONFIG.get_root_path())}"   ###\n' +\
+                                                          f'###   DOWNLOAD TOOK {time_elapsed_dl} (PLUS {time_elapsed_ffmpeg} CONVERTING)   ###')
                     
                     # add song ID to global .song_archive file
                     if not check_all_time:
@@ -336,8 +340,8 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                     wait_between_downloads()
             
         except Exception as e:
-            Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - GENERAL DOWNLOAD ERROR   ###')
-            Printer.print(PrintChannel.ERRORS, f'###   Track_Name: {song_name} - Track_ID: {track_id}   ###')
+            Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - GENERAL DOWNLOAD ERROR   ###\n' +\
+                                              f'###   Track_Name: {song_name} - Track_ID: {track_id}   ###')
             Printer.json_dump_printer(extra_keys)
             Printer.traceback_printer(e)
             if Path(filename_temp).exists():
@@ -384,5 +388,5 @@ def convert_audio_format(filename) -> None:
             Path(temp_filename).unlink()
     
     except ffmpy.FFExecutableNotFoundError:
-        Printer.print(PrintChannel.WARNINGS, '###   WARNING:  FFMPEG NOT FOUND   ###')
-        Printer.print(PrintChannel.WARNINGS, f'###   SKIPPING CONVERSION TO {file_codec.upper()}  ###')
+        Printer.print(PrintChannel.WARNINGS, '###   WARNING:  FFMPEG NOT FOUND   ###\n' +\
+                                            f'###   SKIPPING CONVERSION TO {file_codec.upper()}  ###')

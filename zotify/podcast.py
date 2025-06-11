@@ -86,8 +86,8 @@ def download_episode(episode_id, pbar_stack: list | None = None) -> None:
     
     if podcast_name is None or episode_name is None or duration_ms is None:
         prepare_download_loader.stop()
-        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING EPISODE - FAILED TO QUERY METADATA   ###')
-        Printer.print(PrintChannel.ERRORS, f'###   Episode_ID: {str(episode_id)}   ###')
+        Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING EPISODE - FAILED TO QUERY METADATA   ###\n' +\
+                                          f'###   Episode_ID: {str(episode_id)}   ###')
     else:
         filename = podcast_name + ' - ' + episode_name
         extra_paths = podcast_name + '/'
@@ -104,8 +104,8 @@ def download_episode(episode_id, pbar_stack: list | None = None) -> None:
             stream = Zotify.get_content_stream(episode_id, Zotify.DOWNLOAD_QUALITY)
             
             if stream is None:
-                Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING EPISODE - FAILED TO GET CONTENT STREAM   ###')
-                Printer.print(PrintChannel.ERRORS, f'###   Episode_ID: {str(episode_id)}   ###')
+                Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING EPISODE - FAILED TO GET CONTENT STREAM   ###\n' +\
+                                                  f'###   Episode_ID: {str(episode_id)}   ###')
             
             else:
                 total_size = stream.input_stream.size
@@ -148,8 +148,8 @@ def download_episode(episode_id, pbar_stack: list | None = None) -> None:
                 time_dl_end = time.time()
                 time_elapsed_dl = fmt_seconds(time_dl_end - time_start)
                 
-                Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADED: "{Path(filename).relative_to(Zotify.CONFIG.get_root_path())}"   ###')
-                Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOAD TOOK {time_elapsed_dl}   ###')
+                Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADED: "{Path(filename).relative_to(Zotify.CONFIG.get_root_path())}"   ###\n' +\
+                                                      f'###   DOWNLOAD TOOK {time_elapsed_dl}   ###')
                 
                 wait_between_downloads()
         else:

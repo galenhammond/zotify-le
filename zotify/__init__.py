@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.7.5"
+__version__ = "0.7.10"
 
 from enum import IntEnum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -76,7 +76,6 @@ class Session(LibrespotSession):
             session_builder: An instance of the Librespot Session builder
             langauge: ISO 639-1 language code
         """
-        print("\nLogging in...\n")
         super(Session, self).__init__(
             LibrespotSession.Inner(
                 session_builder.device_type,

@@ -10,6 +10,7 @@ from zotify.const import TYPE, \
     PREMIUM, USER_READ_EMAIL, OFFSET, LIMIT, \
     PLAYLIST_READ_PRIVATE, USER_LIBRARY_READ, USER_FOLLOW_READ
 from zotify.config import Config
+from zotify.termoutput import Printer, PrintChannel, Loader
 
 
 class Zotify:    
@@ -19,14 +20,16 @@ class Zotify:
     
     def __init__(self, args):
         Zotify.CONFIG.load(args)
+        Printer.print(PrintChannel.MANDATORY, "\n\n\n")
+        login_loader = Loader(PrintChannel.MANDATORY, "Logging in...", end="\n")
+        login_loader.start()
         Zotify.login(args)
+        login_loader.stop()
         Zotify.datetime_launch = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
     @classmethod
     def login(cls, args):
         """ Authenticates and saves credentials to a file """
-        from zotify.termoutput import Printer, PrintChannel
-        
         # Create session
         if args.username not in {None, ""} and args.token not in {None, ""}:
             oauth = OAuth(args.username, cls.CONFIG.get_redirect_uri())
@@ -55,12 +58,11 @@ class Zotify:
         try:
             return cls.SESSION.content_feeder().load(content_id, VorbisOnlyAudioQuality(quality), False, None)
         except RuntimeError as e:
-            from zotify.termoutput import Printer, PrintChannel
             if 'Failed fetching audio key!' in e.args[0]:
                 gid, fileid = e.args[0].split('! ')[1].split(', ')
-                Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FETCH AUDIO KEY   ###')
-                Printer.print(PrintChannel.ERRORS, '###   MAY BE CAUSED BY RATE LIMITS - CONSIDER INCREASING `BULK_WAIT_TIME`   ###')
-                Printer.print(PrintChannel.ERRORS, f'###   GID: {gid[5:]} - File_ID: {fileid[8:]}   ###')
+                Printer.print(PrintChannel.ERRORS, '###   ERROR:  FAILED TO FETCH AUDIO KEY   ###\n' +\
+                                                   '###   MAY BE CAUSED BY RATE LIMITS - CONSIDER INCREASING `BULK_WAIT_TIME`   ###\n' +\
+                                                  f'###   GID: {gid[5:]} - File_ID: {fileid[8:]}   ###\n')
             else:
                 raise e
     
@@ -89,25 +91,24 @@ class Zotify:
     
     @classmethod
     def invoke_url(cls, url, tryCount=0):
-        # we need to import that here, otherwise we will get circular imports!
-        from zotify.termoutput import Printer, PrintChannel
         headers = cls.get_auth_header()
         response = requests.get(url, headers=headers)
         responsetext = response.text
         try:
             responsejson = response.json()
+            # responsejson = {"error": {"status": "Unknown", "message": "Received an empty response"}}
         except json.decoder.JSONDecodeError:
             responsejson = {"error": {"status": "Unknown", "message": "Received an empty response"}}
         
         if not responsejson or 'error' in responsejson:
             if tryCount < (cls.CONFIG.get_retry_attempts() - 1):
-                Printer.print(PrintChannel.WARNINGS, F"###   WARNING:  API ERROR (TRY {tryCount + 1}) - RETRYING   ###")
-                Printer.print(PrintChannel.WARNINGS, f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
+                Printer.print(PrintChannel.WARNINGS, f"###   WARNING:  API ERROR (TRY {tryCount + 1}) - RETRYING   ###\n" +\
+                                                     f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
                 sleep(5)
                 return cls.invoke_url(url, tryCount + 1)
             
-            Printer.print(PrintChannel.API_ERRORS, F"###   API ERROR:  API ERROR (TRY {tryCount + 1}) - RETRY LIMIT EXCEDED   ###")
-            Printer.print(PrintChannel.API_ERRORS, f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
+            Printer.print(PrintChannel.API_ERRORS, f"###   API ERROR:  API ERROR (TRY {tryCount + 1}) - RETRY LIMIT EXCEDED   ###\n" +\
+                                                   f"###   {responsejson['error']['status']}: {responsejson['error']['message']}")
         
         return responsetext, responsejson
     

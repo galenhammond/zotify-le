@@ -1,3 +1,5 @@
+from __future__ import annotations
+import json
 import platform
 from os import get_terminal_size, system
 from itertools import cycle
@@ -7,8 +9,7 @@ from traceback import TracebackException
 from enum import Enum
 from tqdm import tqdm
 
-from zotify.config import *
-from zotify.zotify import Zotify
+from zotify.const import *
 
 
 UP_ONE_LINE = "\033[A"
@@ -34,14 +35,22 @@ class PrintChannel(Enum):
 
 class Printer:
     @staticmethod
-    def print(channel: PrintChannel, msg: str) -> None:
+    def print(channel: PrintChannel, msg: str, loader: bool = False) -> None:
+        if channel != PrintChannel.MANDATORY:
+            from zotify.zotify import Zotify
         if channel == PrintChannel.MANDATORY or Zotify.CONFIG.get(channel.value):
             try:
                 columns, _ = get_terminal_size()
             except OSError:
                 columns = 80
+            if not loader and ACTIVE_LOADER:
+                ACTIVE_LOADER[0].pause()
+                msg += "\n"*4
             for line in str(msg).splitlines():
                 tqdm.write(line.ljust(columns))
+            if not loader and ACTIVE_LOADER:
+                ACTIVE_LOADER[0].resume()
+                sleep(ACTIVE_LOADER[0].timeout*2) #guarantee it appears
     
     @staticmethod
     def debug(msg: str) -> None:
@@ -49,8 +58,10 @@ class Printer:
     
     @staticmethod
     def print_loader(channel: PrintChannel, msg: str) -> None:
+        if channel != PrintChannel.MANDATORY:
+            from zotify.zotify import Zotify
         if channel == PrintChannel.MANDATORY or Zotify.CONFIG.get(channel.value):
-            Printer.print(channel, START_OF_PREV_LINE*2 + msg)
+            Printer.print(channel, START_OF_PREV_LINE*2 + msg, loader=True)
     
     @staticmethod
     def pbar(iterable=None, desc=None, total=None, unit='it', 
@@ -94,7 +105,7 @@ class Printer:
     def traceback_printer(e: Exception) -> None:
         Printer.print(PrintChannel.ERRORS, "\n")
         Printer.print(PrintChannel.ERRORS, "".join(TracebackException.from_exception(e).format()))
-        Printer.print(PrintChannel.ERRORS, "\n\n")
+        Printer.print(PrintChannel.ERRORS, "\n")
     
     @staticmethod
     def splash() -> None:
@@ -118,6 +129,13 @@ class Printer:
         )
     
     @staticmethod
+    def depreciated_warning(option_string: str, help_msg: str = None, CONFIG = True) -> None:
+        Printer.print(PrintChannel.MANDATORY, "\n" +\
+        "###   WARNING: " + ("CONFIG" if CONFIG else "ARGUMENT") + f" `{option_string}` IS DEPRECIATED, IGNORING   ###\n" +\
+        "###   THIS WILL BE REMOVED IN FUTURE VERSIONS   ###\n" +\
+        f"###   {help_msg}   ###\n" if  help_msg else "")
+    
+    @staticmethod
     def clear() -> None:
         """ Clear the console window """
         if platform.system() == WINDOWS_SYSTEM:
@@ -125,6 +143,7 @@ class Printer:
         else:
             system('clear')
 
+ACTIVE_LOADER: list[Loader] = []
 
 class Loader:
     """Busy symbol.
@@ -164,9 +183,11 @@ class Loader:
             self.steps = ["[∙∙∙]","[●∙∙]","[∙●∙]","[∙∙●]","[∙∙∙]"]
         
         self.done = False
+        self.paused = False
     
     def start(self):
-        Printer.print(self.channel, "\n")
+        ACTIVE_LOADER.append(self)
+        Printer.print(self.channel, "\n", loader=True)
         self._thread.start()
         return self
     
@@ -174,7 +195,8 @@ class Loader:
         for c in cycle(self.steps):
             if self.done:
                 break
-            Printer.print_loader(self.channel, f"\t{c} {self.desc}")
+            elif not self.paused:
+                Printer.print_loader(self.channel, f"\t{c} {self.desc}")
             sleep(self.timeout)
     
     def __enter__(self):
@@ -183,7 +205,14 @@ class Loader:
     def stop(self):
         self.done = True
         if self.end != "":
-            Printer.print(self.channel, self.end)
+            Printer.print(self.channel, self.end, loader=True)
+        if self in ACTIVE_LOADER: ACTIVE_LOADER.pop()
+    
+    def pause(self):
+        self.paused = True
+    
+    def resume(self):
+        self.paused = False
     
     def __exit__(self, exc_type, exc_value, tb):
         # handle exceptions with those variables ^

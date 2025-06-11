@@ -9,7 +9,9 @@ import argparse
 
 from zotify import __version__
 from zotify.app import client
-from zotify.config import CONFIG_VALUES
+from zotify.config import CONFIG_VALUES, DEPRECIATED_CONFIGS
+from zotify.const import DEBUG
+from zotify.termoutput import Printer
 
 class DepreciatedAction(argparse.Action):
     def __init__(self, option_strings, dest, **kwargs):
@@ -18,10 +20,12 @@ class DepreciatedAction(argparse.Action):
         super().__init__(option_strings, dest, **kwargs)
     
     def __call__(self, parser, namespace, values, option_string=None):
-        print(f"###   WARNING: ARGUMENT `{option_string}` IS DEPRECIATED, IGNORING   ###")
-        print(f"###   THIS WILL BE REMOVED IN FUTURE VERSIONS   ###")
-        print(f"###   {self.help}   ###")
+        Printer.depreciated_warning(option_string, self.help, CONFIG=False)
         setattr(namespace, self.dest, values)
+
+DEPRECIATED_FLAGS = (
+    {"flags":    ('-d', '--download',),     "type":    str,     "help":    'Use `--file` (`-f`) instead'},
+)
 
 def main():
     parser = argparse.ArgumentParser(prog='zotify',
@@ -48,6 +52,9 @@ def main():
                         type=str,
                         dest='token',
                         help='Authentication token')
+    parser.add_argument('--debug',
+                        action='store_true',
+                        dest=DEBUG)
     
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('urls',
@@ -76,17 +83,25 @@ def main():
                        type=str,
                        dest='file_of_urls',
                        help='Download all tracks/albums/episodes/playlists URLs within the file passed as argument')
-    group.add_argument('-d', '--download',
-                       type=str,
-                       help='Use `--file` (`-f`) instead',
-                       action='depreciated_ignore_warn')
     
-    for configkey in CONFIG_VALUES:
-        parser.add_argument(*CONFIG_VALUES[configkey]['arg'],
+    for flag in DEPRECIATED_FLAGS: 
+        group.add_argument(*flag["flags"],
+                           type=flag["type"],
+                           help=flag["help"],
+                           action='depreciated_ignore_warn')
+    
+    for key in DEPRECIATED_CONFIGS:
+        parser.add_argument(*DEPRECIATED_CONFIGS[key]['arg'],
+                            type=str,
+                            action='depreciated_ignore_warn',
+                            help=f'Delete the {key} flag from the commandline call'
+                            )
+    
+    for key in CONFIG_VALUES:
+        parser.add_argument(*CONFIG_VALUES[key]['arg'],
                             type=str, #type conversion occurs in config.parse_arg_value()
-                            dest=configkey.lower(),
+                            dest=key.lower(),
                             default=None,
-                            # help='Specify the value of the ['+configkey+'] config value'
                             )
     
     parser.set_defaults(func=client)
@@ -97,6 +112,7 @@ def main():
     except KeyboardInterrupt:
         print("\n")
         raise
+    print("\n")
 
 
 if __name__ == '__main__':

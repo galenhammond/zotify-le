@@ -4,12 +4,16 @@ from pathlib import Path, PurePath
 from typing import Any
 
 from zotify.const import *
+from zotify.termoutput import Printer
 
 
 CONFIG_VALUES = {
+    # Main Options
     ROOT_PATH:                  { 'default': '~/Music/Zotify Music',    'type': str,    'arg': ('-rp', '--root-path'                     ,) },
     SAVE_CREDENTIALS:           { 'default': 'True',                    'type': bool,   'arg': ('--save-credentials'                     ,) },
     CREDENTIALS_LOCATION:       { 'default': '',                        'type': str,    'arg': ('--creds', '--credentials-location'      ,) },
+    
+    # File Options
     OUTPUT:                     { 'default': '',                        'type': str,    'arg': ('--output'                               ,) },
     OUTPUT_PLAYLIST:            { 'default': '{playlist}/{artist}_{song_name}',
                                   'type': str, 
@@ -26,41 +30,56 @@ CONFIG_VALUES = {
     OUTPUT_ALBUM:               { 'default': '{artist}/{album}/{album_num}_{artist}_{song_name}',
                                   'type': str,
                                   'arg': ('-oa', '--output-album' ,) },
+    ROOT_PODCAST_PATH:          { 'default': '~/Music/Zotify Podcasts', 'type': str,    'arg': ('-rpp', '--root-podcast-path'            ,) },
+    SPLIT_ALBUM_DISCS:          { 'default': 'False',                   'type': bool,   'arg': ('--split-album-discs'                    ,) },
     MAX_FILENAME_LENGTH:        { 'default': '0',                       'type': int,    'arg': ('--max-filename-length'                  ,) },
+    
+    # Download Options
+    BULK_WAIT_TIME:             { 'default': '1',                       'type': int,    'arg': ('--bulk-wait-time'                       ,) },
+    DOWNLOAD_REAL_TIME:         { 'default': 'False',                   'type': bool,   'arg': ('-rt', '--download-real-time'            ,) },
+    TEMP_DOWNLOAD_DIR:          { 'default': '',                        'type': str,    'arg': ('-td', '--temp-download-dir'             ,) },
+    DOWNLOAD_PARENT_ALBUM:      { 'default': 'False',                   'type': bool,   'arg': ('--download-parent-album'                ,) },
+    
+    # Encoding Options
+    DOWNLOAD_FORMAT:            { 'default': 'copy',                    'type': str,    'arg': ('--codec', '--download-format'           ,) },
+    DOWNLOAD_QUALITY:           { 'default': 'auto',                    'type': str,    'arg': ('-q', '--download-quality'               ,) },
+    TRANSCODE_BITRATE:          { 'default': 'auto',                    'type': str,    'arg': ('-b', '--bitrate', '--transcode-bitrate' ,) },
+    
+    # Archive Options
+    SONG_ARCHIVE_LOCATION:      { 'default': '',                        'type': str,    'arg': ('--song-archive-location'                ,) },
+    DISABLE_SONG_ARCHIVE:       { 'default': 'False',                   'type': bool,   'arg': ('--disable-song-archive'                 ,) },
+    DISABLE_DIRECTORY_ARCHIVES: { 'default': 'False',                   'type': bool,   'arg': ('--disable-directory-archives'           ,) },
+    SKIP_EXISTING:              { 'default': 'True',                    'type': bool,   'arg': ('-ie', '--skip-existing'                 ,) },
+    SKIP_PREVIOUSLY_DOWNLOADED: { 'default': 'False',                   'type': bool,   'arg': ('-ip', '--skip-prev-downloaded', 
+                                                                                                '--skip-previously-downloaded'           ,) },
+    
+    # Playlist File Options
     EXPORT_M3U8:                { 'default': 'False',                   'type': bool,   'arg': ('-e, --export-m3u8'                      ,) },
     M3U8_LOCATION:              { 'default': '',                        'type': str,    'arg': ('--m3u8-location'                        ,) },
     M3U8_REL_PATHS:             { 'default': 'True',                    'type': bool,   'arg': ('--m3u8-relative-paths'                  ,) },
     LIKED_SONGS_ARCHIVE_M3U8:   { 'default': 'True',                    'type': bool,   'arg': ('--liked-songs-archive-m3u8'             ,) },
-    ROOT_PODCAST_PATH:          { 'default': '~/Music/Zotify Podcasts', 'type': str,    'arg': ('-rpp', '--root-podcast-path'            ,) },
-    TEMP_DOWNLOAD_DIR:          { 'default': '',                        'type': str,    'arg': ('-td', '--temp-download-dir'             ,) },
-    DOWNLOAD_FORMAT:            { 'default': 'copy',                    'type': str,    'arg': ('--codec', '--download-format'           ,) },
-    DOWNLOAD_QUALITY:           { 'default': 'auto',                    'type': str,    'arg': ('-q', '--download-quality'               ,) },
-    TRANSCODE_BITRATE:          { 'default': 'auto',                    'type': str,    'arg': ('-b', '--bitrate', '--transcode-bitrate' ,) },
-    ALBUM_ART_JPG_FILE:         { 'default': 'False',                   'type': bool,   'arg': ('--album-art-jpg-file'                   ,) },
-    SONG_ARCHIVE_LOCATION:      { 'default': '',                        'type': str,    'arg': ('--song-archive-location'                ,) },
-    DISABLE_SONG_ARCHIVE:       { 'default': 'False',                   'type': bool,   'arg': ('--disable-song-archive'                 ,) },
-    DISABLE_DIRECTORY_ARCHIVES: { 'default': 'False',                   'type': bool,   'arg': ('--disable-directory-archives'           ,) },
-    SPLIT_ALBUM_DISCS:          { 'default': 'False',                   'type': bool,   'arg': ('--split-album-discs'                    ,) },
+    
+    # Lyric File Options
     DOWNLOAD_LYRICS:            { 'default': 'True',                    'type': bool,   'arg': ('--download-lyrics'                      ,) },
     LYRICS_LOCATION:            { 'default': '',                        'type': str,    'arg': ('--lyrics-location'                      ,) },
     ALWAYS_CHECK_LYRICS:        { 'default': 'False',                   'type': bool,   'arg': ('--always-check-lyrics'                  ,) },
+    
+    # Metadata Options
+    LANGUAGE:                   { 'default': 'en',                      'type': str,    'arg': ('--language'                             ,) },
     MD_DISC_TRACK_TOTALS:       { 'default': 'True',                    'type': bool,   'arg': ('--md-disc-track-totals'                 ,) },
     MD_SAVE_GENRES:             { 'default': 'False',                   'type': bool,   'arg': ('--md-save-genres'                       ,) },
     MD_ALLGENRES:               { 'default': 'False',                   'type': bool,   'arg': ('--md-allgenres'                         ,) },
     MD_GENREDELIMITER:          { 'default': ', ',                      'type': str,    'arg': ('--md-genredelimiter'                    ,) },
     MD_ARTISTDELIMITER:         { 'default': ', ',                      'type': str,    'arg': ('--md-artistdelimiter'                   ,) },
     MD_SAVE_LYRICS:             { 'default': 'True',                    'type': bool,   'arg': ('--md-save-lyrics'                       ,) },
-    SKIP_EXISTING:              { 'default': 'True',                    'type': bool,   'arg': ('-ie', '--skip-existing'                 ,) },
-    SKIP_PREVIOUSLY_DOWNLOADED: { 'default': 'False',                   'type': bool,   'arg': ('-ip', '--skip-prev-downloaded', 
-                                                                                                '--skip-previously-downloaded'           ,) },
-    DOWNLOAD_PARENT_ALBUM:      { 'default': 'False',                   'type': bool,   'arg': ('--download-parent-album'                ,) },
+    ALBUM_ART_JPG_FILE:         { 'default': 'False',                   'type': bool,   'arg': ('--album-art-jpg-file'                   ,) },
+    
+    # API Options
     RETRY_ATTEMPTS:             { 'default': '1',                       'type': int,    'arg': ('--retry-attempts'                       ,) },
-    BULK_WAIT_TIME:             { 'default': '1',                       'type': int,    'arg': ('--bulk-wait-time'                       ,) },
-    OVERRIDE_AUTO_WAIT:         { 'default': 'False',                   'type': bool,   'arg': ('--override-auto-wait'                   ,) },
     CHUNK_SIZE:                 { 'default': '20000',                   'type': int,    'arg': ('--chunk-size'                           ,) },
-    DOWNLOAD_REAL_TIME:         { 'default': 'False',                   'type': bool,   'arg': ('-rt', '--download-real-time'            ,) },
-    LANGUAGE:                   { 'default': 'en',                      'type': str,    'arg': ('--language'                             ,) },
     REDIRECT_URI:               { 'default': '127.0.0.1:4381',          'type': str,    'arg': ('--redirect-uri'                         ,) },
+    
+    # Terminal & Logging Options
     PRINT_SPLASH:               { 'default': 'False',                   'type': bool,   'arg': ('--print-splash'                         ,) },
     PRINT_PROGRESS_INFO:        { 'default': 'True',                    'type': bool,   'arg': ('--print-progress-info'                  ,) },
     PRINT_SKIPS:                { 'default': 'True',                    'type': bool,   'arg': ('--print-skips'                          ,) },
@@ -75,6 +94,12 @@ CONFIG_VALUES = {
     PRINT_API_ERRORS:           { 'default': 'True',                    'type': bool,   'arg': ('--print-api-errors'                     ,) },
     FFMPEG_LOG_LEVEL:           { 'default': 'error',                   'type': str,    'arg': ('--ffmpeg-log-level'                     ,) },
 }  
+
+
+DEPRECIATED_CONFIGS = {
+    "SONG_ARCHIVE":               { 'default': '',                        'type': str,    'arg': ('--song-archive'                         ,) },
+    "OVERRIDE_AUTO_WAIT":         { 'default': 'False',                   'type': bool,   'arg': ('--override-auto-wait'                   ,) },
+}
 
 
 class Config:
@@ -97,6 +122,11 @@ class Config:
                 config_fp = config_fp / 'config.json'
         
         true_config_file_path = Path(config_fp).expanduser()
+        cls.Values = {}
+        
+        # Debug Check
+        if DEBUG in vars(args) and vars(args)[DEBUG]:
+            cls.Values[DEBUG] = True
         
         # Load config from zconfig.json
         Path(PurePath(true_config_file_path).parent).mkdir(parents=True, exist_ok=True)
@@ -105,16 +135,21 @@ class Config:
                 json.dump(cls.get_default_json(), config_file, indent=4)
         with open(true_config_file_path, encoding='utf-8') as config_file:
             jsonvalues: dict[str, dict[str, Any]] = json.load(config_file)
-            cls.Values = {}
             for key in jsonvalues:
                 if key in CONFIG_VALUES or key == DEBUG:
                     cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key]) if key != DEBUG else jsonvalues[key]
+                elif key in DEPRECIATED_CONFIGS:
+                    Printer.depreciated_warning(key, f'Delete the "{key}": "{jsonvalues[key]}" line from your config.json')
         
         # Add default values for missing keys
         for key in CONFIG_VALUES:
             if key not in cls.Values:
-                # Printer.print(key)
                 cls.Values[key] = cls.parse_arg_value(key, CONFIG_VALUES[key]['default'])
+                jsonvalues[key] = CONFIG_VALUES[key]['default']
+        if cls.debug():
+            debug_config = Path(true_config_file_path.stem + "_DEBUG.json")
+            with open(debug_config, 'w' if debug_config.exists() else 'x', encoding='utf-8') as config_file:
+                json.dump(jsonvalues, config_file, indent=4)
         
         # Override config from commandline arguments
         for key in CONFIG_VALUES:
@@ -153,6 +188,10 @@ class Config:
         return cls.Values.get(key)
     
     @classmethod
+    def debug(cls) -> bool:
+        return cls.Values.get(DEBUG)
+    
+    @classmethod
     def get_root_path(cls) -> PurePath:
         if cls.get(ROOT_PATH) == '':
             root_path = PurePath(Path.home() / 'Music/Zotify Music/')
@@ -188,10 +227,6 @@ class Config:
     @classmethod
     def get_chunk_size(cls) -> int:
         return cls.get(CHUNK_SIZE)
-    
-    @classmethod
-    def get_override_auto_wait(cls) -> bool:
-        return cls.get(OVERRIDE_AUTO_WAIT)
     
     @classmethod
     def get_download_format(cls) -> str:
@@ -269,7 +304,7 @@ class Config:
     def get_temp_download_dir(cls) -> str | PurePath:
         if cls.get(TEMP_DOWNLOAD_DIR) == '':
             return ''
-        temp_download_path:str = cls.get(TEMP_DOWNLOAD_DIR)
+        temp_download_path: str = cls.get(TEMP_DOWNLOAD_DIR)
         if temp_download_path[0] == ".":
             temp_download_path = cls.get_root_path() / PurePath(temp_download_path).relative_to(".")
         return PurePath(Path(temp_download_path).expanduser())

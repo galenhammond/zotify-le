@@ -290,7 +290,7 @@ def client(args: Namespace) -> None:
         if len(args.urls) > 0:
             if len(args.urls) == 1 and " " in args.urls[0]:
                 args.urls = args.urls[0].split(' ')
-            # Printer.print(PrintChannel.DOWNLOADS, f'###   DOWNLOADING URLS: {args.urls}')
+            # Printer.debug(f'###   DOWNLOADING URLS: {args.urls}   ###')
             download_from_urls(args.urls)
         return
     
@@ -308,8 +308,8 @@ def client(args: Namespace) -> None:
         
         for song in pbar:
             if not song[TRACK][NAME] or not song[TRACK][ID]:
-                Printer.print(PrintChannel.SKIPS, '###   SKIPPING:  SONG NO LONGER EXISTS   ###')
-                Printer.print(PrintChannel.SKIPS, f'###   Track_Name: {song[TRACK][NAME]} - Track_Name: {song[TRACK][ID]}   ###')
+                Printer.print(PrintChannel.SKIPS, '###   SKIPPING:  SONG NO LONGER EXISTS   ###\n' +\
+                                                 f'###   Track_Name: {song[TRACK][NAME]} - Track_Name: {song[TRACK][ID]}   ###')
             else:
                 download_track('liked', song[TRACK][ID], None, pbar_stack)
                 pbar.set_description(song[TRACK][NAME])
