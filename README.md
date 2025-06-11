@@ -238,7 +238,7 @@ The value is relative to the `ROOT_PATH` directory and may contain the following
 
 ### Create and run a container from the image
 
-`docker run --rm -v "$PWD/Zotify Music:/root/Music/Zotify Music" -v "$PWD/Zotify Podcasts:/root/Music/Zotify Podcasts" -it zotify`
+`docker run --rm -p 4381:4381 -v "$PWD/Zotify Music:/root/Music/Zotify Music" -v "$PWD/Zotify Podcasts:/root/Music/Zotify Podcasts" -it zotify`
 
 ## Common Questions
 
