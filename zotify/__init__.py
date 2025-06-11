@@ -335,7 +335,7 @@ class OAuth:
         self.__token = TokenProvider.StoredToken(response.json())
     
     def __run_server(self) -> None:
-        server_address = ("127.0.0.1", 4381)
+        server_address = ("0.0.0.0", 4381)
         httpd = self.OAuthHTTPServer(server_address, self.RequestHandler, self)
         httpd.authenticator = self
         httpd.serve_forever()

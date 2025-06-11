@@ -18,4 +18,5 @@ RUN mv /usr/local/lib/python3.10/site-packages/lib/python3.10/site-packages/* /u
 COPY zotify /app/zotify
 
 WORKDIR /app
+EXPOSE 4381
 CMD ["python3", "-m", "zotify"]
