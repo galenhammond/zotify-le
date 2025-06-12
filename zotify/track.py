@@ -10,7 +10,7 @@ from zotify.const import TRACKS, ALBUM, GENRES, NAME, DISC_NUMBER, TRACK_NUMBER,
     IS_PLAYABLE, ARTISTS, IMAGES, URL, RELEASE_DATE, ID, TRACKS_URL, TRACK_STATS_URL, \
     CODEC_MAP, EXT_MAP, DURATION_MS, HREF, ARTISTS, WIDTH, COMPILATION, ALBUM_TYPE
 from zotify.config import EXPORT_M3U8
-from zotify.termoutput import Printer, PrintChannel, Loader
+from zotify.termoutput import Printer, PrintChannel, Loader, ACTIVE_LOADER
 from zotify.utils import fix_filename, set_audio_tags, set_music_thumbnail, create_download_directory, \
     add_to_m3u8, fetch_m3u8_songs, get_directory_song_ids, add_to_directory_song_archive, \
     get_archived_song_ids, add_to_song_archive, fmt_seconds, wait_between_downloads
@@ -24,7 +24,6 @@ def get_song_info(song_id) -> tuple[list[str], list[Any], str, str, Any, Any, An
     
     if not TRACKS in info:
         raise ValueError(f'Invalid response from TRACKS_URL:\n{raw}')
-        
     
     try:
         artists = []
@@ -135,6 +134,7 @@ def handle_lyrics(track_id: str, song_name: str, filedir: PurePath) -> list[str]
         
     except ValueError:
         Printer.print(PrintChannel.SKIPS, f'###   SKIPPING:  LYRICS FOR "{song_name}" (LYRICS NOT AVAILABLE)   ###')
+        if not ACTIVE_LOADER: Printer.print(PrintChannel.SKIPS, "\n\n")
     return lyrics
 
 
@@ -268,7 +268,7 @@ def download_track(mode: str, track_id: str, extra_keys: dict | None = None, pba
                         prepare_download_loader.stop()
                         Printer.print(PrintChannel.ERRORS, '###   ERROR:  SKIPPING SONG - FAILED TO GET CONTENT STREAM   ###\n' +\
                                                           f'###   Track_ID: {track_id}   ###')
-                        Printer.print(PrintChannel.MANDATORY, "\n")
+                        Printer.print(PrintChannel.MANDATORY, "\n\n")
                         return
                     create_download_directory(filedir)
                     total_size = stream.input_stream.size
