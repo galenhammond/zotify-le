@@ -77,7 +77,8 @@ CONFIG_VALUES = {
     # API Options
     RETRY_ATTEMPTS:             { 'default': '1',                       'type': int,    'arg': ('--retry-attempts'                       ,) },
     CHUNK_SIZE:                 { 'default': '20000',                   'type': int,    'arg': ('--chunk-size'                           ,) },
-    REDIRECT_URI:               { 'default': '127.0.0.1:4381',          'type': str,    'arg': ('--redirect-uri'                         ,) },
+    OAUTH_ADDRESS:              { 'default': '0.0.0.0',                 'type': str,    'arg': ('--oauth-address'                        ,) },
+    REDIRECT_ADDRESS:           { 'default': '127.0.0.1',               'type': str,    'arg': ('--redirect-address'                     ,) },
     
     # Terminal & Logging Options
     PRINT_SPLASH:               { 'default': 'False',                   'type': bool,   'arg': ('--print-splash'                         ,) },
@@ -99,6 +100,7 @@ CONFIG_VALUES = {
 DEPRECIATED_CONFIGS = {
     "SONG_ARCHIVE":               { 'default': '',                        'type': str,    'arg': ('--song-archive'                         ,) },
     "OVERRIDE_AUTO_WAIT":         { 'default': 'False',                   'type': bool,   'arg': ('--override-auto-wait'                   ,) },
+    "REDIRECT_URI":               { 'default': '127.0.0.1:4381',          'type': str,    'arg': ('--redirect-uri'                         ,) },
 }
 
 
@@ -120,36 +122,42 @@ class Config:
             config_fp = Path(args.config_location)
             if config_fp.is_dir():
                 config_fp = config_fp / 'config.json'
+        full_config_path = Path(config_fp).expanduser()
         
-        true_config_file_path = Path(config_fp).expanduser()
         cls.Values = {}
         
-        # Debug Check
-        if DEBUG in vars(args) and vars(args)[DEBUG]:
-            cls.Values[DEBUG] = True
+        # Debug Check (guarantee at top of config)
+        cls.Values[DEBUG] = args.debug
         
-        # Load config from zconfig.json
-        Path(PurePath(true_config_file_path).parent).mkdir(parents=True, exist_ok=True)
-        if not Path(true_config_file_path).exists():
-            with open(true_config_file_path, 'w', encoding='utf-8') as config_file:
-                json.dump(cls.get_default_json(), config_file, indent=4)
-        with open(true_config_file_path, encoding='utf-8') as config_file:
-            jsonvalues: dict[str, dict[str, Any]] = json.load(config_file)
-            for key in jsonvalues:
-                if key in CONFIG_VALUES or key == DEBUG:
-                    cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key]) if key != DEBUG else jsonvalues[key]
-                elif key in DEPRECIATED_CONFIGS:
-                    Printer.depreciated_warning(key, f'Delete the "{key}": "{jsonvalues[key]}" line from your config.json')
-        
-        # Add default values for missing keys
+        # Load default values
         for key in CONFIG_VALUES:
-            if key not in cls.Values:
-                cls.Values[key] = cls.parse_arg_value(key, CONFIG_VALUES[key]['default'])
-                jsonvalues[key] = CONFIG_VALUES[key]['default']
-        if cls.debug():
-            debug_config = Path(true_config_file_path.stem + "_DEBUG.json")
-            with open(debug_config, 'w' if debug_config.exists() else 'x', encoding='utf-8') as config_file:
-                json.dump(jsonvalues, config_file, indent=4)
+            cls.Values[key] = cls.parse_arg_value(key, CONFIG_VALUES[key]['default'])
+        
+        # Load config from config.json
+        Path(PurePath(full_config_path).parent).mkdir(parents=True, exist_ok=True)
+        if not Path(full_config_path).exists():
+            if cls.Values[DEBUG] == False: del cls.Values[DEBUG]
+            with open(full_config_path, 'w', encoding='utf-8') as config_file:
+                json.dump(cls.get_default_json(), config_file, indent=4)
+        else:
+            with open(full_config_path, encoding='utf-8') as config_file:
+                jsonvalues: dict[str, dict[str, Any]] = json.load(config_file)
+            for key in jsonvalues:
+                if key == DEBUG and not cls.Values[DEBUG]:
+                    cls.Values[DEBUG] = str(jsonvalues[key]).lower() in ['yes', 'true', '1']
+                elif key in CONFIG_VALUES:
+                    cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key])
+                elif key in DEPRECIATED_CONFIGS: # keep, warn, and place at the bottom (don't delete)
+                    Printer.depreciated_warning(key, f'Delete the "{key}": "{jsonvalues[key]}" line from your config.json')
+                    cls.Values["vvv___DEPRECIATED_BELOW_HERE___vvv"] = "vvv___REMOVE_THESE___vvv"
+                    cls.Values[key] = cls.parse_arg_value(key, jsonvalues[key], DEPRECIATED_CONFIGS)
+        
+        # Standardize config.json if debugging or refreshing 
+        if cls.debug() or args.update_config:
+            if cls.debug() and not full_config_path.name.endswith("_DEBUG.json"):
+                full_config_path = Path(full_config_path.stem + "_DEBUG.json")
+            with open(full_config_path, 'w' if full_config_path.exists() else 'x', encoding='utf-8') as debug_file:
+                json.dump(cls.parse_config_jsonstr(), debug_file, indent=4)
         
         # Override config from commandline arguments
         for key in CONFIG_VALUES:
@@ -161,21 +169,31 @@ class Config:
             cls.Values[PRINT_SPLASH] = False
     
     @classmethod
-    def get_default_json(cls) -> Any:
+    def get_default_json(cls) -> dict:
         r = {}
+        # if DEBUG in cls.Values and cls.Values[DEBUG]:
+        #     r[DEBUG] = True
         for key in CONFIG_VALUES:
             r[key] = CONFIG_VALUES[key]['default']
         return r
     
     @classmethod
-    def parse_arg_value(cls, key: str, value: Any) -> Any:
-        if isinstance(value, CONFIG_VALUES[key]['type']):
+    def parse_config_jsonstr(cls, key_subset: tuple | dict | None = None) -> dict:
+        d = {}
+        if key_subset is None: key_subset = cls.Values
+        for key in key_subset:
+            d[key] = str(cls.Values[key])
+        return d
+    
+    @classmethod
+    def parse_arg_value(cls, key: str, value: Any, dict_source = CONFIG_VALUES) -> Any:
+        if isinstance(value, dict_source[key]['type']):
             return value
-        if CONFIG_VALUES[key]['type'] == str:
+        if dict_source[key]['type'] == str:
             return str(value)
-        if CONFIG_VALUES[key]['type'] == int:
+        if dict_source[key]['type'] == int:
             return int(value)
-        if CONFIG_VALUES[key]['type'] == bool:
+        if dict_source[key]['type'] == bool:
             if str(value).lower() in ['yes', 'true', '1']:
                 return True
             if str(value).lower() in ['no', 'false', '0']:
@@ -456,5 +474,5 @@ class Config:
         return cls.get(DOWNLOAD_PARENT_ALBUM)
     
     @classmethod
-    def get_redirect_uri(cls) -> str:
-        return cls.get(REDIRECT_URI)
+    def get_oauth_addresses(cls) -> tuple[str, str]:
+        return cls.get(REDIRECT_ADDRESS), cls.get(OAUTH_ADDRESS)

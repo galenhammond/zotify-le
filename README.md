@@ -65,6 +65,8 @@ If an artist's URL is given, all albums by the specified artist will be download
 | `-c`, `--config-location`          | Specify a directory containing a Zotify `config.json` file to load settings (Also accepts a filepath to a `.json` file) |
 | `-u`, `--username`                 | Account username                                                                                                        |
 | `--token`                          | Authentication token                                                                                                    |
+| `--debug`                          | Enable debug mode, prints extra information and creates a `config_DEBUG.json` file                                      |
+| `--update-config`                  | Updates your `config.json` file while keeping all current settings unchanged                                            |
 
 | Command Line Mode Flag (exclusive) | Mode                                                                                   |
 |------------------------------------|----------------------------------------------------------------------------------------|
@@ -150,7 +152,8 @@ Set arguments in the commandline like this: `-ie False` or `--codec mp3`. Wrap c
 |------------------------------|-------------------------------------|------------------------------------------------------------------------------|---------------------------|
 | `RETRY_ATTEMPTS`             | `--retry-attempts`                  | Number of times to retry failed API requests                                 | 1                         |
 | `CHUNK_SIZE`                 | `--chunk-size`                      | Chunk size for downloading                                                   | 20000                     |
-| `REDIRECT_URI`               | `--redirect-uri`                    | Local callback point for OAuth login requests                                | 127.0.0.1:4381            |
+| `OAUTH_ADDRESS`              | `--redirect-uri`                    | Local server address listening for OAuth login requests                      | 0.0.0.0                   |
+| `REDIRECT_ADDRESS`           | `--redirect-address`                | Local callback point for OAuth login requests                                | 127.0.0.1                 |
 
 | Terminal & Logging Options   | Command Line Config Flag            | Description                                                                  | Default Value             |
 |------------------------------|-------------------------------------|------------------------------------------------------------------------------|---------------------------|

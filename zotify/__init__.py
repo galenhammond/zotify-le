@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.7.10"
+__version__ = "0.7.11"
 
 from enum import IntEnum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -260,9 +260,11 @@ class OAuth:
     __token: TokenProvider.StoredToken
     username: str
     
-    def __init__(self, username: str, redirect_uri: str = "127.0.0.1:4381") -> None:
+    def __init__(self, username: str, redirect_address: str | None, oauth_address: str | None) -> None:
         self.username = username
-        self.redirect_uri = f"http://{redirect_uri}/login"
+        self.port = 4381
+        self.oauth_address = oauth_address if oauth_address else "0.0.0.0"
+        self.redirect_uri = f"http://{redirect_address if redirect_address else "127.0.0.1"}:{self.port}/login"
     
     def auth_interactive(self) -> str:
         """
@@ -335,7 +337,7 @@ class OAuth:
         self.__token = TokenProvider.StoredToken(response.json())
     
     def __run_server(self) -> None:
-        server_address = ("0.0.0.0", 4381)
+        server_address = (self.oauth_address, self.port)
         httpd = self.OAuthHTTPServer(server_address, self.RequestHandler, self)
         httpd.authenticator = self
         httpd.serve_forever()

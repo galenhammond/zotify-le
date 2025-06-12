@@ -32,7 +32,7 @@ class Zotify:
         """ Authenticates and saves credentials to a file """
         # Create session
         if args.username not in {None, ""} and args.token not in {None, ""}:
-            oauth = OAuth(args.username, cls.CONFIG.get_redirect_uri())
+            oauth = OAuth(args.username, *cls.CONFIG.get_oauth_addresses())
             oauth.set_token(args.token, OAuth.RequestType.REFRESH)
             cls.SESSION = Session.from_oauth(
                 oauth, cls.CONFIG.get_credentials_location(), cls.CONFIG.get_language()
@@ -46,9 +46,9 @@ class Zotify:
             username = args.username
             while username == "":
                 username = input("Username: ")
-            oauth = OAuth(username, cls.CONFIG.get_redirect_uri())
+            oauth = OAuth(username, *cls.CONFIG.get_oauth_addresses())
             auth_url = oauth.auth_interactive()
-            Printer.print(PrintChannel.MANDATORY, f"\nClick on the following link to login:\n{auth_url}")
+            Printer.print(PrintChannel.MANDATORY, f"Click on the following link to login:\n{auth_url}")
             cls.SESSION = Session.from_oauth(
                 oauth, cls.CONFIG.get_credentials_location(), cls.CONFIG.get_language()
             )

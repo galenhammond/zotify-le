@@ -10,7 +10,6 @@ import argparse
 from zotify import __version__
 from zotify.app import client
 from zotify.config import CONFIG_VALUES, DEPRECIATED_CONFIGS
-from zotify.const import DEBUG
 from zotify.termoutput import Printer
 
 class DepreciatedAction(argparse.Action):
@@ -53,8 +52,9 @@ def main():
                         dest='token',
                         help='Authentication token')
     parser.add_argument('--debug',
-                        action='store_true',
-                        dest=DEBUG)
+                        action='store_true')
+    parser.add_argument('--update-config',
+                        action='store_true')
     
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('urls',
