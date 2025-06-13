@@ -22,7 +22,7 @@ def get_all_playlists():
     return playlists
 
 
-def get_playlist_songs(playlist_id):
+def get_playlist_songs(playlist_id: str) -> tuple[list[str], list[dict]]:
     """ returns list of songs in a playlist """
     playlist_tracks = []
     offset = 0
