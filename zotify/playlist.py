@@ -24,22 +24,37 @@ def get_all_playlists():
 
 def get_playlist_songs(playlist_id):
     """ returns list of songs in a playlist """
-    songs = []
+    playlist_tracks = []
     offset = 0
     limit = 100
     
     while True:
         resp = Zotify.invoke_url_with_params(f'{PLAYLISTS_URL}/{playlist_id}/tracks', limit=limit, offset=offset)
         offset += limit
-        songs.extend(resp[ITEMS])
+        playlist_tracks.extend(resp[ITEMS])
         if len(resp[ITEMS]) < limit:
             break
     
-    # filtering by added date inverts playlist order, ruining the .m3u8 file, so skip if exporting m3u8
-    if not Zotify.CONFIG.get_export_m3u8(): 
-        songs.sort(key=lambda s: strptime_utc(s['added_at']), reverse=True)
+    playlist_tracks.sort(key=lambda s: strptime_utc(s['added_at']))
     
-    return songs
+    # Filter Before Indexing, matches prior behavior
+    playlist_tracks = [song_dict[TRACK] if song_dict[TRACK] is not None and song_dict[TRACK][ID] else None for song_dict in playlist_tracks]
+    
+    char_num = max({len(str(len(playlist_tracks))), 2})
+    playlist_num = [str(n+1).zfill(char_num) for n in range(len(playlist_tracks))]
+    
+    # filtering by added date inverts playlist order, ruining the .m3u8 file, so skip if exporting m3u8
+    if not Zotify.CONFIG.get_export_m3u8():
+        playlist_num.reverse()
+        playlist_tracks.reverse()
+    
+    # Filter After Indexing, feels more safe
+    # for i, song_dict in enumerate(playlist_tracks):
+    #     if song_dict[TRACK] is None or song_dict[TRACK][ID] is None:
+    #         playlist_num.pop(i)
+    #         playlist_tracks.pop(i)
+    
+    return playlist_num, playlist_tracks
 
 
 def get_playlist_info(playlist_id) -> tuple[str, str]:
@@ -50,16 +65,17 @@ def get_playlist_info(playlist_id) -> tuple[str, str]:
 
 def download_playlist(playlist, pbar_stack: list | None = None):
     """Downloads all the songs from a playlist"""
-    playlist_songs = [song_dict[TRACK] for song_dict in get_playlist_songs(playlist[ID]) if song_dict[TRACK] is not None and song_dict[TRACK][ID]]
-    char_num = max({len(str(len(playlist_songs))), 2})
+    playlist_num, playlist_songs = get_playlist_songs(playlist[ID])
     
     pos, pbar_stack = Printer.pbar_position_handler(3, pbar_stack)
     pbar = Printer.pbar(playlist_songs, unit='song', pos=pos,
                         disable=not Zotify.CONFIG.get_show_playlist_pbar())
     pbar_stack.append(pbar)
     
-    for n, song in enumerate(pbar, 1):
-        if song[TYPE] == "episode": # Playlist item is a podcast episode
+    for i, song in enumerate(pbar):
+        if song is None:
+            continue
+        elif song[TYPE] == "episode": # Playlist item is a podcast episode
             pbar.unit = 'episode'
             download_episode(song[ID])
         else:
@@ -67,7 +83,7 @@ def download_playlist(playlist, pbar_stack: list | None = None):
             download_track('extplaylist', song[ID],
                            {'playlist_song_name': song[NAME],
                             'playlist': playlist[NAME],
-                            'playlist_num': str(n).zfill(char_num),
+                            'playlist_num': playlist_num[i],
                             'playlist_id': playlist[ID],
                             'playlist_track_id': song[ID]},
                            pbar_stack)
